@@ -1,0 +1,16 @@
+# syntax = ghcr.io/siderolabs/bldr:v0.3.0
+
+format: v1alpha2
+
+vars:
+  # renovate: datasource=git-refs versioning=git depName=https://github.com/raspberrypi/firmware.git
+  raspberrypi_firmware_ref: dc94391863445ab867782d25ca6ae1e88579df5d
+  raspberrypi_firmware_sha256: a37041044b4d46e324dc03f64455a7c79a38aaf77d0bfc03e6ad7052fc217cd1
+  raspberrypi_firmware_sha512: cf5ed2ce16ee059c9c185ef53d079fb4a59720f1729c270480f2ffb46e5d990936ad58233486143f71d60116fd14e78edb81cd13feec1a787a47650d7eaaf56f
+
+  # renovate: datasource=github-tags extractVersion=^v(?<version>.*)$ depName=u-boot/u-boot
+  uboot_version: 2023.01
+  uboot_sha256: 69423bad380f89a0916636e89e6dcbd2e4512d584308d922d1039d1e4331950f
+  uboot_sha512: 417a28267eb7875820d08fafc7316f164663609378637539e71648b0b9b7d28796b6c381717f31b0ab6472805fefd32628ef7d1b2e7b9f3c51c8ad122993f679
+labels:
+  org.opencontainers.image.source: https://github.com/siderolabs/sbc-raspberrypi

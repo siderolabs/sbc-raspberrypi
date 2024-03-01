@@ -1,0 +1,48 @@
+# References:
+#   U-Boot:
+#     - https://u-boot.readthedocs.io/en/latest
+#   Broadcom/RaspberryPi
+#     - https://github.com/u-boot/u-boot/blob/master/doc/board/broadcom/raspberrypi.rst
+name: u-boot
+variant: scratch
+shell: /toolchain/bin/bash
+dependencies:
+  - stage: base
+steps:
+  - sources:
+      - url: https://ftp.denx.de/pub/u-boot/u-boot-{{ .uboot_version }}.tar.bz2
+        destination: u-boot.tar.bz2
+        sha256: "{{ .uboot_sha256 }}"
+        sha512: "{{ .uboot_sha512 }}"
+    env:
+      SOURCE_DATE_EPOCH: {{ .BUILD_ARG_SOURCE_DATE_EPOCH }}
+    prepare:
+      - |
+        mkdir -p /usr/bin \
+          && ln -sf /toolchain/bin/env /usr/bin/env
+
+        tar xf u-boot.tar.bz2 --strip-components=1
+      # rpi_generic (built with rpi_arm64_defconfig, which "uses the device-tree provided by the firmware")
+      - |
+        patch -p1 < /pkg/patches/0002-rpi-add-NVMe-to-boot-order.patch
+        patch -p1 < /pkg/patches/0003-Revert-nvme-Correct-the-prps-per-page-calculation-me.patch
+        patch -p1 < /pkg/patches/0004-usb-xhci-brcm-Make-driver-compatible-with-downstream.patch
+        patch -p1 < /pkg/patches/0005-nvme-improve-readability-of-nvme_setup_prps.patch
+        patch -p1 < /pkg/patches/0006-nvme-Use-pointer-for-CPU-addressed-buffers.patch
+        patch -p1 < /pkg/patches/0007-nvme-translate-virtual-addresses-into-the-bus-s-addr.patch
+        patch -p1 < /pkg/patches/0008-enable-nvme-and-fixup-efi-boot.patch
+
+        make rpi_arm64_defconfig
+        sed -i "s/CONFIG_TOOLS_LIBCRYPTO=y/# CONFIG_TOOLS_LIBCRYPTO is not set/" .config
+    build:
+      # rpi_generic
+      - |
+        make -j $(nproc) HOSTLDLIBS_mkimage="-lssl -lcrypto"
+    install:
+      # rpi_generic
+      - |
+        mkdir -p /rootfs/artifacts/arm64/u-boot/rpi_generic
+        cp -v u-boot.bin /rootfs/artifacts/arm64/u-boot/rpi_generic
+finalize:
+  - from: /rootfs
+    to: /rootfs

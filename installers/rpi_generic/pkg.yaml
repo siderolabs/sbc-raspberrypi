@@ -1,0 +1,29 @@
+name: rpi_generic
+variant: scratch
+shell: /toolchain/bin/bash
+dependencies:
+  - stage: base
+  - stage: raspberrypi-firmware
+  - stage: u-boot
+    platform: linux/arm64
+  - stage: profiles
+steps:
+  - env:
+      GOPATH: /go
+    cachePaths:
+      - /.cache/go-build
+      - /go/pkg
+    build:
+      - |
+        export PATH=${PATH}:${TOOLCHAIN}/go/bin
+
+        cd /pkg/src
+        CGO_ENABLED=0 go build -o ./rpi_generic .
+    install:
+      - |
+        mkdir -p /rootfs/installers/
+
+        cp -p /pkg/src/rpi_generic /rootfs/installers/rpi_generic
+finalize:
+  - from: /rootfs
+    to: /

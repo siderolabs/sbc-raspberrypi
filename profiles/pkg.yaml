@@ -1,0 +1,5 @@
+name: profiles
+variant: scratch
+finalize:
+  - from: /pkg/rpi_generic
+    to: /rootfs/profiles

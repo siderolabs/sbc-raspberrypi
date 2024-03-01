@@ -1,0 +1,19 @@
+---
+kind: pkgfile.Build
+spec:
+  targets:
+    - rpi_generic
+  extraBuildArgs:
+    - PKGS_PREFIX
+    - PKGS
+  makefile:
+    extraVariables:
+      - name: PKGS_PREFIX
+        defaultValue: ghcr.io/siderolabs
+      - name: PKGS
+        defaultValue: v1.7.0-alpha.0-33-g3aacf03
+---
+kind: common.Build
+spec:
+    ignoredPaths:
+      - go.work.sum
