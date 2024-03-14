@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2024-03-12T16:46:47Z by kres latest.
+# Generated on 2024-03-14T16:55:00Z by kres latest.
 
 # common variables
 
@@ -54,7 +54,7 @@ PKGS ?= v1.7.0-alpha.0-33-g3aacf03
 
 # targets defines all the available targets
 
-TARGETS = rpi_generic
+TARGETS = sbc-raspberrypi
 
 # help menu
 

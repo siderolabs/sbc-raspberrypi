@@ -2,7 +2,7 @@
 kind: pkgfile.Build
 spec:
   targets:
-    - rpi_generic
+    - sbc-raspberrypi
   extraBuildArgs:
     - PKGS_PREFIX
     - PKGS

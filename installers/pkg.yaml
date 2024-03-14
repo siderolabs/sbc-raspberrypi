@@ -1,0 +1,11 @@
+name: sbc-raspberrypi
+variant: scratch
+dependencies:
+  - stage: rpi_generic
+  - stage: raspberrypi-firmware
+  - stage: u-boot
+    platform: linux/arm64
+  - stage: profiles
+finalize:
+  - from: /rootfs
+    to: /
