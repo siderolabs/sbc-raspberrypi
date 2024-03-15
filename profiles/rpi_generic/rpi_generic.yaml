@@ -3,7 +3,7 @@ platform: metal
 secureboot: false
 output:
   kind: image
-  outFormat: xz
+  outFormat: .xz
   imageOptions:
     diskSize: 1306525696
     diskFormat: raw
