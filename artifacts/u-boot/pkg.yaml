@@ -19,7 +19,10 @@ steps:
     prepare:
       - |
         mkdir -p /usr/bin \
-          && ln -sf /toolchain/bin/env /usr/bin/env
+          && ln -sf /toolchain/bin/env /usr/bin/env \
+          && ln -sf /toolchain/bin/python3 /toolchain/bin/python
+
+        pip3 install pyelftools
 
         tar xf u-boot.tar.bz2 --strip-components=1
       # rpi_generic (built with rpi_arm64_defconfig, which "uses the device-tree provided by the firmware")
@@ -33,7 +36,6 @@ steps:
         patch -p1 < /pkg/patches/0008-enable-nvme-and-fixup-efi-boot.patch
 
         make rpi_arm64_defconfig
-        sed -i "s/CONFIG_TOOLS_LIBCRYPTO=y/# CONFIG_TOOLS_LIBCRYPTO is not set/" .config
     build:
       # rpi_generic
       - |
