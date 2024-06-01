@@ -1,78 +1,42 @@
-# THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
-#
-# Generated on 2024-04-03T13:05:44Z by kres latest.
-
 name: default
-concurrency:
-  group: ${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
-"on":
+on:
   push:
-    branches:
-      - main
-      - release-*
+    branches: [ 'main', 'release-*' ]
     tags:
-      - v*
-  pull_request:
-    branches:
-      - main
-      - release-*
+      - "v*"
+
 jobs:
-  default:
+  sbc:
+    runs-on: buildjet-4vcpu-ubuntu-2204-arm
+
     permissions:
-      actions: read
-      contents: write
-      issues: read
+      contents: read
       packages: write
-      pull-requests: read
-    runs-on:
-      - self-hosted
-      - pkgs
-    if: (!startsWith(github.head_ref, 'renovate/') && !startsWith(github.head_ref, 'dependabot/'))
-    services:
-      buildkitd:
-        image: moby/buildkit:v0.13.1
-        options: --privileged
-        ports:
-          - 1234:1234
-        volumes:
-          - /var/lib/buildkit/${{ github.repository }}:/var/lib/buildkit
-          - /usr/etc/buildkit/buildkitd.toml:/etc/buildkit/buildkitd.toml
+
     steps:
-      - name: checkout
+      - name: Checkout
         uses: actions/checkout@v4
-      - name: Unshallow
-        run: |
-          git fetch --prune --unshallow
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
         with:
-          append: |
-            - endpoint: tcp://buildkit-arm64.ci.svc.cluster.local:1234
-              platforms: linux/arm64
-          driver: remote
-          endpoint: tcp://127.0.0.1:1234
-      - name: Build
-        run: |
-          make
-      - name: Login to registry
-        if: github.event_name != 'pull_request'
+          # need history for `git describe` to work for Talos `Makefile`
+          fetch-depth: 0
+          fetch-tags: true
+
+      - uses: docker/setup-buildx-action@v3
+        with:
+          buildkitd-config: .github/buildkitd.toml
+
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          password: ${{ secrets.GITHUB_TOKEN }}
           registry: ghcr.io
-          username: ${{ github.repository_owner }}
-      - name: Push to registry
-        if: github.event_name != 'pull_request'
-        run: |
-          make  PUSH=true
-      - name: release-notes
-        if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          make release-notes
-      - name: Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: crazy-max/ghaction-github-release@v2
-        with:
-          body_path: _out/RELEASE_NOTES.md
-          draft: "true"
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push sbc turingrk1 overlay image
+        run: make
+        env:
+          PUSH: '1'
+          USERNAME: ${{ github.actor }}
+          PLATFORM: linux/arm64
+          PROGRESS: plain
+          CI_ARGS: "--cache-from=ghcr.io/${{ github.actor }}/sbc-turingrk1:cache --cache-to=ghcr.io/${{ github.actor }}/sbc-turingrk1:cache"
