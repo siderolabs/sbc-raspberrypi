@@ -6,6 +6,8 @@ dependencies:
   - stage: u-boot
     platform: linux/arm64
   - stage: profiles
+  - image: ghcr.io/nberlee/kernel:v1.7.3
+    platform: linux/arm64
 finalize:
   - from: /rootfs
     to: /
