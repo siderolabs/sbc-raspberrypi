@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2024-04-03T13:05:44Z by kres latest.
+# Generated on 2024-07-04T17:27:42Z by kres 8c8b007.
 
 name: default
 concurrency:
@@ -31,7 +31,7 @@ jobs:
     if: (!startsWith(github.head_ref, 'renovate/') && !startsWith(github.head_ref, 'dependabot/'))
     services:
       buildkitd:
-        image: moby/buildkit:v0.13.1
+        image: moby/buildkit:v0.14.1
         options: --privileged
         ports:
           - 1234:1234
@@ -39,12 +39,38 @@ jobs:
           - /var/lib/buildkit/${{ github.repository }}:/var/lib/buildkit
           - /usr/etc/buildkit/buildkitd.toml:/etc/buildkit/buildkitd.toml
     steps:
+      - name: gather-system-info
+        id: system-info
+        uses: kenchan0130/actions-system-info@v1.3.0
+        continue-on-error: true
+      - name: print-system-info
+        run: |
+          MEMORY_GB=$((${{ steps.system-info.outputs.totalmem }}/1024/1024/1024))
+
+          OUTPUTS=(
+            "CPU Core: ${{ steps.system-info.outputs.cpu-core }}"
+            "CPU Model: ${{ steps.system-info.outputs.cpu-model }}"
+            "Hostname: ${{ steps.system-info.outputs.hostname }}"
+            "NodeName: ${NODE_NAME}"
+            "Kernel release: ${{ steps.system-info.outputs.kernel-release }}"
+            "Kernel version: ${{ steps.system-info.outputs.kernel-version }}"
+            "Name: ${{ steps.system-info.outputs.name }}"
+            "Platform: ${{ steps.system-info.outputs.platform }}"
+            "Release: ${{ steps.system-info.outputs.release }}"
+            "Total memory: ${MEMORY_GB} GB"
+          )
+
+          for OUTPUT in "${OUTPUTS[@]}";do
+            echo "${OUTPUT}"
+          done
+        continue-on-error: true
       - name: checkout
         uses: actions/checkout@v4
       - name: Unshallow
         run: |
           git fetch --prune --unshallow
       - name: Set up Docker Buildx
+        id: setup-buildx
         uses: docker/setup-buildx-action@v3
         with:
           append: |
@@ -53,6 +79,7 @@ jobs:
           driver: remote
           endpoint: tcp://127.0.0.1:1234
       - name: Build
+        if: github.event_name == 'pull_request'
         run: |
           make
       - name: Login to registry
