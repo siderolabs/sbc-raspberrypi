@@ -55,7 +55,7 @@ TARGETS = sbc-raspberrypi
 
 # help menu
 
-export define HELP_MENU_HEADER
+define HELP_MENU_HEADER
 # Getting Started
 
 To build this project, you must have the following installed:
@@ -102,6 +102,8 @@ The registry and username can be overridden by exporting REGISTRY, and USERNAME
 respectively.
 
 endef
+
+export HELP_MENU_HEADER
 
 all: $(TARGETS)  ## Builds all targets defined.
 
