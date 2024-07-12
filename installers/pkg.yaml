@@ -5,7 +5,7 @@ dependencies:
   - stage: raspberrypi-firmware
   - stage: u-boot
     platform: linux/arm64
-  - image: registry.skysolutions.fi/library/talos-kernel:latest
+  - image: registry.skysolutions.fi/library/talos-kernel:latest@sha256:e5fa51caece182b8a138378c846f3089e6f8976a643996330bada0ed023d437a
   - stage: profiles
 finalize:
   - from: /rootfs
