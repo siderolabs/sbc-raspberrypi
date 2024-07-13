@@ -1,3 +1,4 @@
+
 ## [sbc-raspberrypi 0.1.0-beta.1](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.0-beta.1) (2024-07-05)
 
 Welcome to the v0.1.0-beta.1 release of sbc-raspberrypi!  
