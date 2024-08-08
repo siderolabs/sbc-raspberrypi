@@ -1,10 +1,10 @@
-# syntax = ghcr.io/siderolabs/bldr:v0.3.0
+# syntax = ghcr.io/siderolabs/bldr:v0.3.2
 
 format: v1alpha2
 
 vars:
   # renovate: datasource=git-refs versioning=git depName=https://github.com/raspberrypi/firmware.git
-  raspberrypi_firmware_ref: 4a1d5d3ff87108ca46bf2d5132c8a1a936eeb4d2
+  raspberrypi_firmware_ref: c276eae28a20ac7d36c533fe3a120f7679690882
   raspberrypi_firmware_sha256: a47e94538b8810b420e451d9e95a039a04ef3c835089e869b558b51f3c465d20
   raspberrypi_firmware_sha512: b15a0d1bdaa7aec5b595d331fc968bfe2daeaa0b0a634cd1d95a40f1320a67a9cd6bcea48d24bdc996599cb51c2e99f51d86748579372dba2faf81d237d0d490
 
