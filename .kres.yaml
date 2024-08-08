@@ -11,7 +11,7 @@ spec:
       - name: PKGS_PREFIX
         defaultValue: ghcr.io/siderolabs
       - name: PKGS
-        defaultValue: v1.8.0-alpha.0-34-gce49757
+        defaultValue: v1.8.0-alpha.0-46-g124d35b
 ---
 kind: common.Build
 spec:
