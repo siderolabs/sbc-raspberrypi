@@ -1,3 +1,31 @@
+## [sbc-raspberrypi 0.1.0-beta.2](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.0-beta.2) (2024-08-08)
+
+Welcome to the v0.1.0-beta.2 release of sbc-raspberrypi!  
+*This is a pre-release of sbc-raspberrypi*
+
+
+
+Please try out the release binaries and report any issues at
+https://github.com/siderolabs/sbc-raspberrypi/issues.
+
+### Contributors
+
+* Noel Georgi
+
+### Changes
+<details><summary>1 commit</summary>
+<p>
+
+* [`cb7b03d`](https://github.com/siderolabs/sbc-raspberrypi/commit/cb7b03d20a390486f4e46be43a4d6aacefac734d) chore: rekres and bump deps
+</p>
+</details>
+
+### Dependency Changes
+
+This release has no dependency changes
+
+Previous release can be found at [v0.1.0-beta.1](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.0-beta.1)
+
 ## [sbc-raspberrypi 0.1.0-beta.1](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.0-beta.1) (2024-07-05)
 
 Welcome to the v0.1.0-beta.1 release of sbc-raspberrypi!  
