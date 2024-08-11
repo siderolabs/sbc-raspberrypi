@@ -2,6 +2,8 @@
 
 This repo provides the overlay for Raspberry Pi generic Talos image.
 
+For example usage instructions follow the [boot assets guide](https://www.talos.dev/latest/talos-guides/install/boot-assets/#example-raspberry-pi-overlay-with-imager).
+
 ## Overlay Options
 
 | Option            | Description                                                         |
