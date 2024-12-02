@@ -5,13 +5,13 @@ dependencies:
   - stage: base
 steps:
   - sources:
-      - url: https://github.com/raspberrypi/firmware/archive/{{ .raspberrypi_firmware_ref }}.tar.gz
-        destination: raspberrypi-firmware.tar.gz
+      - url: https://github.com/raspberrypi/firmware/releases/download/{{ .raspberrypi_firmware_version }}/raspi-firmware_{{ .raspberrypi_firmware_version }}.orig.tar.xz
+        destination: raspberrypi-firmware.tar.xz
         sha256: "{{ .raspberrypi_firmware_sha256 }}"
         sha512: "{{ .raspberrypi_firmware_sha512 }}"
     prepare:
       - |
-        tar -xzf raspberrypi-firmware.tar.gz --strip-components=1
+        tar xf raspberrypi-firmware.tar.xz --strip-components=1
     install:
       - |
         mkdir -p /rootfs/artifacts/arm64/firmware/boot

@@ -38,6 +38,12 @@
             ],
             "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.?(?<patch>\\d+)?$"
         },
+	{
+            "matchPackageNames": [
+                "raspberrypi/firmware"
+            ],
+            "versioning": "regex:^\\d+\\.(?<major>\\d{4})(?<minor>\\d{2})(?<patch>\\d{2})$"
+        },
         {
             "matchPackagePatterns": [
                 "*"
