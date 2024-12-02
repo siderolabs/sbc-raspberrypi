@@ -9,7 +9,7 @@ vars:
   raspberrypi_firmware_sha512: 7860a7a913a35313031e07295a2c8b40b6f0e97523abf8053f0d792106dde53332755c7ab3bbe2a08b7817f77b11242637c1b0520bfb6d2d58642f6e9c4d1a52
 
   # renovate: datasource=github-tags extractVersion=^v(?<version>.*)$ depName=u-boot/u-boot
-  uboot_version: 2024.07
+  uboot_version: 2024.10
   uboot_sha256: f591da9ab90ef3d6b3d173766d0ddff90c4ed7330680897486117df390d83c8f
   uboot_sha512: 678f44e2b9132140f0bf05c637e57e638c73c278611037a41824b3ebff2131af4dec0163da4664bb2e5c4fd8034ba8c95b93b57f7aa9f4c045da322d87c3b5e9
 labels:
