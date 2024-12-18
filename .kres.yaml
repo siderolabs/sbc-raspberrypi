@@ -17,3 +17,14 @@ kind: common.Build
 spec:
     ignoredPaths:
       - go.work.sum
+---
+kind: common.Renovate
+spec:
+  packageRules:
+    - matchPackageNames:
+        - u-boot/u-boot
+        - ARM-software/arm-trusted-firmware
+      versioning: 'regex:^(?<major>\d+)\.(?<minor>\d+)\.?(?<patch>\d+)?$'
+    - matchPackageNames:
+        - raspberrypi/firmware
+      versioning: 'regex:^\d+\.(?<major>\d{4})(?<minor>\d{2})(?<patch>\d{2})$'
