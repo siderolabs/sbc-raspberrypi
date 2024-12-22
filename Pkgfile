@@ -5,8 +5,8 @@ format: v1alpha2
 vars:
   # renovate: datasource=github-tags depName=raspberrypi/firmware
   raspberrypi_firmware_version: 1.20241126
-  raspberrypi_firmware_sha256: 020dbcdbb30af5942a62fc3eb355449aba45276b67e864dee2522ff53fd936e6
-  raspberrypi_firmware_sha512: 7860a7a913a35313031e07295a2c8b40b6f0e97523abf8053f0d792106dde53332755c7ab3bbe2a08b7817f77b11242637c1b0520bfb6d2d58642f6e9c4d1a52
+  raspberrypi_firmware_sha256: 66868553e2c1e07802992784f1e368f189723b299bd136337ed0d8e7820ae6c5
+  raspberrypi_firmware_sha512: a95d634a88152454d4111aef6d2141662c197d265d0cf2c4ea9901a5233218031180306a9a39d2a2a5eea4d5ddf7a6804550ba1bd3622e13067691e43139c636
 
   # renovate: datasource=github-tags extractVersion=^v(?<version>.*)$ depName=u-boot/u-boot
   uboot_version: 2024.07
