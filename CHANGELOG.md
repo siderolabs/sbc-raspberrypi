@@ -1,3 +1,32 @@
+## [sbc-raspberrypi 0.1.1](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.1) (2024-12-23)
+
+Welcome to the v0.1.1 release of sbc-raspberrypi!
+
+
+
+Please try out the release binaries and report any issues at
+https://github.com/siderolabs/sbc-raspberrypi/issues.
+
+### Contributors
+
+* Nico Berlee
+* Noel Georgi
+
+### Changes
+<details><summary>2 commits</summary>
+<p>
+
+* [`a802dbb`](https://github.com/siderolabs/sbc-raspberrypi/commit/a802dbb773b927e673b76023faf386bf9f74c281) fix: fix raspberrypi firmware url
+* [`2f30031`](https://github.com/siderolabs/sbc-raspberrypi/commit/2f300313aa7f277b194a21e1326d29b97f17372e) chore: rekres to simplify `.kres.yaml` defaults
+</p>
+</details>
+
+### Dependency Changes
+
+This release has no dependency changes
+
+Previous release can be found at [v0.1.0](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.0)
+
 ## [sbc-raspberrypi 0.1.0](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.0) (2024-12-02)
 
 Welcome to the v0.1.0 release of sbc-raspberrypi!  
