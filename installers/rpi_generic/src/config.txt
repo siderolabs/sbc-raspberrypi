@@ -17,3 +17,5 @@ enable_uart=1
 dtoverlay=disable-bt
 # Disable Wireless Lan.
 dtoverlay=disable-wifi
+# Enable watchdog
+dtparam=watchdog=on
