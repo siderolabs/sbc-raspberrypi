@@ -1,3 +1,30 @@
+## [sbc-raspberrypi 0.1.2](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.2) (2025-01-28)
+
+Welcome to the v0.1.2 release of sbc-raspberrypi!
+
+
+
+Please try out the release binaries and report any issues at
+https://github.com/siderolabs/sbc-raspberrypi/issues.
+
+### Contributors
+
+* Nico Berlee
+
+### Changes
+<details><summary>1 commit</summary>
+<p>
+
+* [`e113e8b`](https://github.com/siderolabs/sbc-raspberrypi/commit/e113e8b12749ca309903022fa6eafe60d14a7919) feat: enable watchdog device in firmware by default
+</p>
+</details>
+
+### Dependency Changes
+
+This release has no dependency changes
+
+Previous release can be found at [v0.1.1](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.1)
+
 ## [sbc-raspberrypi 0.1.1](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.1) (2024-12-23)
 
 Welcome to the v0.1.1 release of sbc-raspberrypi!
