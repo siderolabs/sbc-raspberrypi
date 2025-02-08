@@ -1,15 +1,15 @@
-# syntax = ghcr.io/siderolabs/bldr:v0.3.2
+# syntax = ghcr.io/siderolabs/bldr:v0.4.1
 
 format: v1alpha2
 
 vars:
   # renovate: datasource=github-tags depName=raspberrypi/firmware
-  raspberrypi_firmware_version: 1.20241126
+  raspberrypi_firmware_version: 1.20250127
   raspberrypi_firmware_sha256: 66868553e2c1e07802992784f1e368f189723b299bd136337ed0d8e7820ae6c5
   raspberrypi_firmware_sha512: a95d634a88152454d4111aef6d2141662c197d265d0cf2c4ea9901a5233218031180306a9a39d2a2a5eea4d5ddf7a6804550ba1bd3622e13067691e43139c636
 
   # renovate: datasource=github-tags extractVersion=^v(?<version>.*)$ depName=u-boot/u-boot
-  uboot_version: 2024.07
+  uboot_version: 2025.01
   uboot_sha256: f591da9ab90ef3d6b3d173766d0ddff90c4ed7330680897486117df390d83c8f
   uboot_sha512: 678f44e2b9132140f0bf05c637e57e638c73c278611037a41824b3ebff2131af4dec0163da4664bb2e5c4fd8034ba8c95b93b57f7aa9f4c045da322d87c3b5e9
 labels:
