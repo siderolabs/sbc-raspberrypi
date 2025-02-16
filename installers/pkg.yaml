@@ -2,7 +2,9 @@ name: sbc-raspberrypi
 variant: scratch
 dependencies:
   - stage: rpi_generic
+  - stage: revpi_generic
   - stage: raspberrypi-firmware
+  - stage: revpi-firmware
   - stage: u-boot
     platform: linux/arm64
   - stage: profiles

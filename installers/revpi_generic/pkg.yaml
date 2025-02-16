@@ -1,0 +1,25 @@
+name: revpi_generic
+variant: scratch
+shell: /toolchain/bin/bash
+dependencies:
+  - stage: base
+steps:
+  - env:
+      GOPATH: /go
+    cachePaths:
+      - /.cache/go-build
+      - /go/pkg
+    build:
+      - |
+        export PATH=${PATH}:${TOOLCHAIN}/go/bin
+
+        cd /pkg/src
+        CGO_ENABLED=0 go build -o ./revpi_generic .
+    install:
+      - |
+        mkdir -p /rootfs/installers/
+
+        cp -p /pkg/src/revpi_generic /rootfs/installers/revpi_generic
+finalize:
+  - from: /rootfs
+    to: /rootfs

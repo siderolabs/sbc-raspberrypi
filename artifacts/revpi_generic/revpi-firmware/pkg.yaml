@@ -1,0 +1,44 @@
+name: revpi-firmware
+variant: scratch
+shell: /toolchain/bin/bash
+dependencies:
+  - image: '{{ .TOOLS_IMAGE }}'
+steps:
+  - env:
+      ARCH: {{ if eq .ARCH "aarch64"}}arm64{{ else if eq .ARCH "x86_64" }}x86_64{{ else }}unsupported{{ end }}
+  - sources:
+      - url: https://github.com/revolutionpi/linux/archive/refs/tags/{{ .revpi_kernel_version }}.tar.gz
+        destination: revpi-kernel.tar.gz
+        sha256: "{{ .revpi_kernel_sha256 }}"
+        sha512: "{{ .revpi_kernel_sha512 }}"
+    prepare:
+      - |
+        mkdir -p /src
+        tar xf revpi-kernel.tar.gz --strip-components=1 -C /src
+        cd /src
+
+        mkdir /bin
+        ln -sv /toolchain/bin/bash /bin/bash
+        ln -sv /toolchain/bin/bash /bin/sh
+        ln -sv /toolchain/lib /lib
+        mkdir -p /usr/bin \
+            && ln -sf /toolchain/bin/env /usr/bin/env \
+            && ln -sf /toolchain/bin/true /bin/true \
+            && ln -sf /toolchain/bin/false /bin/false \
+            && ln -sf /toolchain/bin/pwd /bin/pwd
+
+        # Ensure that `make menuconfig` works.
+        ln -s /toolchain/bin/awk /usr/bin/awk
+
+        mkdir -p /usr/lib/pkgconfig
+        ln -s /toolchain/include /usr/include
+
+        make revpi-v8_defconfig
+        make -j $(nproc) dtbs
+    install:
+      - |
+        mkdir -p /rootfs/artifacts/arm64/firmware/revpi_generic/boot/overlays
+        cp -av /src/arch/arm64/boot/dts/overlays/*.dtbo /rootfs/artifacts/arm64/firmware/revpi_generic/boot/overlays
+finalize:
+  - from: /rootfs
+    to: /rootfs
