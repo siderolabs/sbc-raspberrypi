@@ -1,0 +1,31 @@
+name: revpi-firmware
+variant: scratch
+shell: /bin/bash
+dependencies:
+  - stage: base
+steps:
+  - env:
+      ARCH: arm64
+  - sources:
+      - url: https://github.com/revolutionpi/linux/archive/refs/tags/{{ .revpi_kernel_version }}.tar.gz
+        destination: revpi-kernel.tar.gz
+        sha256: "{{ .revpi_kernel_sha256 }}"
+        sha512: "{{ .revpi_kernel_sha512 }}"
+    prepare:
+      - |
+        mkdir -p /src
+        tar xf revpi-kernel.tar.gz --strip-components=1 -C /src
+
+        cd /src
+        make revpi-v8_defconfig
+    build:
+      - |
+        cd /src
+        make -j $(nproc) dtbs
+    install:
+      - |
+        mkdir -p /rootfs/artifacts/arm64/firmware/revpi_generic/boot/overlays
+        cp -av /src/arch/arm64/boot/dts/overlays/*.dtbo /rootfs/artifacts/arm64/firmware/revpi_generic/boot/overlays
+finalize:
+  - from: /rootfs
+    to: /rootfs

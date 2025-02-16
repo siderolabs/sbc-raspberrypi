@@ -3,3 +3,5 @@ variant: scratch
 finalize:
   - from: /pkg/rpi_generic
     to: /rootfs/profiles
+  - from: /pkg/revpi_generic
+    to: /rootfs/profiles
