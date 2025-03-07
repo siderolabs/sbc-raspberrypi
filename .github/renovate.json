@@ -44,6 +44,18 @@
             ]
         },
         {
+            "enabled": false,
+            "matchFileNames": [
+                "Dockerfile"
+            ]
+        },
+        {
+            "enabled": false,
+            "matchFileNames": [
+                ".github/workflows/*.yaml"
+            ]
+        },
+        {
             "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.?(?<patch>\\d+)?$",
             "matchPackageNames": [
                 "u-boot/u-boot",

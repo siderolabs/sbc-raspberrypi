@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2024-12-18T18:48:13Z by kres fcff05e.
+# Generated on 2025-03-07T10:24:24Z by kres d88db2f.
 
 # common variables
 
@@ -25,7 +25,7 @@ SOURCE_DATE_EPOCH := $(shell git log $(INITIAL_COMMIT_SHA) --pretty=%ct)
 
 # sync bldr image with pkgfile
 
-BLDR_RELEASE := v0.3.2
+BLDR_RELEASE := v0.4.1
 BLDR_IMAGE := ghcr.io/siderolabs/bldr:$(BLDR_RELEASE)
 BLDR := docker run --rm --user $(shell id -u):$(shell id -g) --volume $(PWD):/src --entrypoint=/bldr $(BLDR_IMAGE) --root=/src
 
@@ -36,13 +36,11 @@ PLATFORM ?= linux/amd64,linux/arm64
 PROGRESS ?= auto
 PUSH ?= false
 CI_ARGS ?=
-BUILDKIT_MULTI_PLATFORM ?= 1
 COMMON_ARGS = --file=Pkgfile
 COMMON_ARGS += --provenance=false
 COMMON_ARGS += --progress=$(PROGRESS)
 COMMON_ARGS += --platform=$(PLATFORM)
 COMMON_ARGS += --build-arg=SOURCE_DATE_EPOCH=$(SOURCE_DATE_EPOCH)
-COMMON_ARGS += --build-arg=BUILDKIT_MULTI_PLATFORM=$(BUILDKIT_MULTI_PLATFORM)
 COMMON_ARGS += --build-arg=PKGS_PREFIX="$(PKGS_PREFIX)"
 COMMON_ARGS += --build-arg=PKGS="$(PKGS)"
 
@@ -119,15 +117,6 @@ target-%:  ## Builds the specified target defined in the Pkgfile. The build resu
 
 local-%:  ## Builds the specified target defined in the Pkgfile using the local output type. The build result will be output to the specified local destination.
 	@$(MAKE) target-$* TARGET_ARGS="--output=type=local,dest=$(DEST) $(TARGET_ARGS)"
-	@PLATFORM=$(PLATFORM) DEST=$(DEST) bash -c '\
-	  for platform in $$(tr "," "\n" <<< "$$PLATFORM"); do \
-	    echo $$platform; \
-	    directory="$${platform//\//_}"; \
-	    if [[ -d "$$DEST/$$directory" ]]; then \
-	      mv -f "$$DEST/$$directory/"* $$DEST; \
-	      rmdir "$$DEST/$$directory/"; \
-	    fi; \
-	  done'
 
 docker-%:  ## Builds the specified target defined in the Pkgfile using the docker output type. The build result will be loaded into Docker.
 	@$(MAKE) target-$* TARGET_ARGS="$(TARGET_ARGS)"

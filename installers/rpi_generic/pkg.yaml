@@ -9,9 +9,21 @@ steps:
     cachePaths:
       - /.cache/go-build
       - /go/pkg
+    network: default
+    prepare:
+      - |
+        export PATH=${PATH}:/toolchain/go/bin
+
+        cd /pkg/src
+        go mod download
+  - env:
+      GOPATH: /go
+    cachePaths:
+      - /.cache/go-build
+      - /go/pkg
     build:
       - |
-        export PATH=${PATH}:${TOOLCHAIN}/go/bin
+        export PATH=${PATH}:/toolchain/go/bin
 
         cd /pkg/src
         CGO_ENABLED=0 go build -o ./rpi_generic .

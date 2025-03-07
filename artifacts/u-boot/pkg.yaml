@@ -16,6 +16,8 @@ steps:
         sha512: "{{ .uboot_sha512 }}"
     env:
       SOURCE_DATE_EPOCH: {{ .BUILD_ARG_SOURCE_DATE_EPOCH }}
+      PATH: /toolchain/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    network: default
     prepare:
       - |
         mkdir -p /usr/bin \
