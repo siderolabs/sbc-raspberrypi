@@ -3,6 +3,9 @@
 format: v1alpha2
 
 vars:
+
+  TOOLS_IMAGE: ghcr.io/siderolabs/tools:v1.9.0-3-gb2ede52
+
   # renovate: datasource=github-tags depName=raspberrypi/firmware
   raspberrypi_firmware_version: 1.20241126
   raspberrypi_firmware_sha256: 66868553e2c1e07802992784f1e368f189723b299bd136337ed0d8e7820ae6c5
@@ -12,5 +15,11 @@ vars:
   uboot_version: 2024.07
   uboot_sha256: f591da9ab90ef3d6b3d173766d0ddff90c4ed7330680897486117df390d83c8f
   uboot_sha512: 678f44e2b9132140f0bf05c637e57e638c73c278611037a41824b3ebff2131af4dec0163da4664bb2e5c4fd8034ba8c95b93b57f7aa9f4c045da322d87c3b5e9
+
+  # renovate: datasource=github-tags depName=revolutionpi/linux
+  revpi_kernel_version: v6.6.46-rt39-revpi6
+  revpi_kernel_sha256: 6f5e6b8c3dbc48981750157526a367f8c84f6ca6ef94093e908c1cf52d776fda
+  revpi_kernel_sha512: 481a061aaa6199c6f2a30c3a5bc4133265840d32f53092af33f503b18107044420f4f753819a1f17c57244edf45180332023b8f263719a152527073ebe05d7b0
+
 labels:
   org.opencontainers.image.source: https://github.com/siderolabs/sbc-raspberrypi
