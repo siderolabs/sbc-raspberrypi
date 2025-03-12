@@ -5,7 +5,7 @@
 #     - https://github.com/u-boot/u-boot/blob/master/doc/board/broadcom/raspberrypi.rst
 name: u-boot
 variant: scratch
-shell: /toolchain/bin/bash
+shell: /bin/bash
 dependencies:
   - stage: base
 steps:
@@ -16,16 +16,8 @@ steps:
         sha512: "{{ .uboot_sha512 }}"
     env:
       SOURCE_DATE_EPOCH: {{ .BUILD_ARG_SOURCE_DATE_EPOCH }}
-      PATH: /toolchain/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-    network: default
     prepare:
       - |
-        mkdir -p /usr/bin \
-          && ln -sf /toolchain/bin/env /usr/bin/env \
-          && ln -sf /toolchain/bin/python3 /toolchain/bin/python
-
-        pip3 install pyelftools
-
         tar xf u-boot.tar.bz2 --strip-components=1
       # rpi_generic (built with rpi_arm64_defconfig, which "uses the device-tree provided by the firmware")
       - |

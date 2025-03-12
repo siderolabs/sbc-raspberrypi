@@ -1,10 +1,9 @@
 name: base
 variant: scratch
-shell: /toolchain/bin/bash
+shell: /bin/bash
 dependencies:
-  - image: "{{ .BUILD_ARG_PKGS_PREFIX }}/base:{{ .BUILD_ARG_PKGS }}"
-  - image: "{{ .BUILD_ARG_PKGS_PREFIX }}/ca-certificates:{{ .BUILD_ARG_PKGS }}"
-  - image: "{{ .BUILD_ARG_PKGS_PREFIX }}/openssl:{{ .BUILD_ARG_PKGS }}"
+  - image: "{{ .BUILD_ARG_TOOLS_PREFIX }}/tools:{{ .BUILD_ARG_TOOLS }}"
+    to: /rootfs
 finalize:
-  - from: /
+  - from: /rootfs
     to: /

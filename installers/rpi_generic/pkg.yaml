@@ -1,30 +1,26 @@
 name: rpi_generic
 variant: scratch
-shell: /toolchain/bin/bash
+shell: /bin/bash
 dependencies:
   - stage: base
 steps:
   - env:
-      GOPATH: /go
+      GOPATH: /tmp/go
+    network: default
     cachePaths:
       - /.cache/go-build
-      - /go/pkg
-    network: default
+      - /tmp/go/pkg
     prepare:
       - |
-        export PATH=${PATH}:/toolchain/go/bin
-
         cd /pkg/src
         go mod download
   - env:
-      GOPATH: /go
+      GOPATH: /tmp/go
     cachePaths:
       - /.cache/go-build
-      - /go/pkg
+      - /tmp/go/pkg
     build:
       - |
-        export PATH=${PATH}:/toolchain/go/bin
-
         cd /pkg/src
         CGO_ENABLED=0 go build -o ./rpi_generic .
     install:
