@@ -1,3 +1,35 @@
+## [sbc-raspberrypi 0.1.4](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.4) (2025-04-15)
+
+Welcome to the v0.1.4 release of sbc-raspberrypi!
+
+
+
+Please try out the release binaries and report any issues at
+https://github.com/siderolabs/sbc-raspberrypi/issues.
+
+### Contributors
+
+* Noel Georgi
+* Andrey Smirnov
+* Martin Schuessler
+
+### Changes
+<details><summary>4 commits</summary>
+<p>
+
+* [`8447811`](https://github.com/siderolabs/sbc-raspberrypi/commit/8447811443f76fb9da1e993842ccadfade886bfe) chore: bump deps
+* [`71bb718`](https://github.com/siderolabs/sbc-raspberrypi/commit/71bb718d7c257dbf2dd3e11a3e4ba33c17b3bd7f) feat: add support for the revolutionpi
+* [`3eeedb3`](https://github.com/siderolabs/sbc-raspberrypi/commit/3eeedb3ee5d8bd12e56129c30c26cc1b2884a379) feat: use new tools as base
+* [`2bb6b52`](https://github.com/siderolabs/sbc-raspberrypi/commit/2bb6b5299af42e2b48ee3d7964cabfb7f46c8fd6) chore: unify buildkits
+</p>
+</details>
+
+### Dependency Changes
+
+This release has no dependency changes
+
+Previous release can be found at [v0.1.3](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.3)
+
 ## [sbc-raspberrypi 0.1.3](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.3) (2025-02-04)
 
 Welcome to the v0.1.3 release of sbc-raspberrypi!
