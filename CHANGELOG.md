@@ -1,3 +1,30 @@
+## [sbc-raspberrypi 0.1.5](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.5) (2025-05-02)
+
+Welcome to the v0.1.5 release of sbc-raspberrypi!
+
+
+
+Please try out the release binaries and report any issues at
+https://github.com/siderolabs/sbc-raspberrypi/issues.
+
+### Contributors
+
+* Noel Georgi
+
+### Changes
+<details><summary>1 commit</summary>
+<p>
+
+* [`666e16e`](https://github.com/siderolabs/sbc-raspberrypi/commit/666e16ee039789614442dc2bcf27001d20e3ab34) fix: use grub as bootloader for SBCs
+</p>
+</details>
+
+### Dependency Changes
+
+This release has no dependency changes
+
+Previous release can be found at [v0.1.4](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.4)
+
 ## [sbc-raspberrypi 0.1.4](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.4) (2025-04-15)
 
 Welcome to the v0.1.4 release of sbc-raspberrypi!
