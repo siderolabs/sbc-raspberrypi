@@ -7,3 +7,4 @@ output:
   imageOptions:
     diskSize: 1306525696
     diskFormat: raw
+    bootloader: grub
