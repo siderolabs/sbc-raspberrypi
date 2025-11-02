@@ -4,14 +4,14 @@ format: v1alpha2
 
 vars:
   # renovate: datasource=github-tags depName=raspberrypi/firmware
-  raspberrypi_firmware_version: 1.20250305
-  raspberrypi_firmware_sha256: 4981021b82f600f450d64d9b82034dc603bf5429889a3947b2863e01992a343c
-  raspberrypi_firmware_sha512: 936025f6fe20cd3a4e5da636bb288c50bb78ca1e1df35cd3605d2936b82d79388f30163e1a4dcdb8dd47db05bf6c44916189f01e66a3f01511dc6963502afc46
+  raspberrypi_firmware_version: 1.20250915
+  raspberrypi_firmware_sha256: 55a5d58c59bf7171562f1f1289c638e97e2b8d90374084887bfe5fc83e57cb1d
+  raspberrypi_firmware_sha512: 33120c901c59fbcd267427dce5fd8f174d32476bfae76744697f6729151d66054c6f0bd54f29c3b715c1492a52724fe2973a6adbf31cfb79f1c82dd94983cf77
 
   # renovate: datasource=github-tags extractVersion=^v(?<version>.*)$ depName=u-boot/u-boot
-  uboot_version: 2024.07
-  uboot_sha256: f591da9ab90ef3d6b3d173766d0ddff90c4ed7330680897486117df390d83c8f
-  uboot_sha512: 678f44e2b9132140f0bf05c637e57e638c73c278611037a41824b3ebff2131af4dec0163da4664bb2e5c4fd8034ba8c95b93b57f7aa9f4c045da322d87c3b5e9
+  uboot_version: 2026.01-rc2
+  uboot_sha256: 55a5e5783c1a0f0d5cfcd3a3529a81ccbc5ac182b3f6d25ac38dad9585329e31
+  uboot_sha512: 404568a8ecf00145e154ee2856fb79a68ea9ce30466be12f8836ea6f6440f523abe438b78cb833a7be16865f5063a021be2aef778900a7c75952515788608010
 
   # renovate: datasource=github-tags depName=revolutionpi/linux
   revpi_kernel_version: v6.6.46-rt39-revpi6

@@ -12,10 +12,11 @@ diff --git a/configs/rpi_arm64_defconfig b/configs/rpi_arm64_defconfig
 index f9dade18f6..f2394e4a52 100644
 --- a/configs/rpi_arm64_defconfig
 +++ b/configs/rpi_arm64_defconfig
-@@ -57,3 +57,19 @@ CONFIG_SYS_WHITE_ON_BLACK=y
+@@ -63,4 +63,20 @@ CONFIG_SYS_WHITE_ON_BLACK=y
  CONFIG_VIDEO_BCM2835=y
  CONFIG_CONSOLE_SCROLL_LINES=10
  CONFIG_PHYS_TO_BUS=y
+ # CONFIG_HEXDUMP is not set
 +# Enable NVME
 +CONFIG_NVME_PCI=y
 +CONFIG_CMD_NVME=y
