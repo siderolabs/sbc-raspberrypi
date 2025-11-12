@@ -1,6 +1,6 @@
 module rpi_generic
 
-go 1.24.0
+go 1.25.4
 
 require (
 	github.com/siderolabs/go-copy v0.1.0

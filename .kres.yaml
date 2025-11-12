@@ -10,14 +10,10 @@ spec:
     - TOOLS
   makefile:
     extraVariables:
-      - name: PKGS_PREFIX
-        defaultValue: ghcr.io/siderolabs
-      - name: PKGS
-        defaultValue: v1.10.0
       - name: TOOLS_PREFIX
         defaultValue: ghcr.io/siderolabs
       - name: TOOLS
-        defaultValue: v1.10.0
+        defaultValue: v1.12.0
 ---
 kind: common.Build
 spec:
