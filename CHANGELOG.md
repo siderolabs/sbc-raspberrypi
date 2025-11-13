@@ -1,3 +1,33 @@
+## [sbc-raspberrypi 0.1.6](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.6) (2025-11-13)
+
+Welcome to the v0.1.6 release of sbc-raspberrypi!
+
+
+
+Please try out the release binaries and report any issues at
+https://github.com/siderolabs/sbc-raspberrypi/issues.
+
+### Contributors
+
+* Noel Georgi
+* eseiker
+
+### Changes
+<details><summary>3 commits</summary>
+<p>
+
+* [`a41e85b`](https://github.com/siderolabs/sbc-raspberrypi/commit/a41e85ba7eb09747b569f9621071a9905665bd52) chore: bump u-boot to support raspberry pi 5
+* [`bb2ccbe`](https://github.com/siderolabs/sbc-raspberrypi/commit/bb2ccbe805fa40583e4f5939ef069ae06d03a825) chore: bump tools
+* [`de6eaa9`](https://github.com/siderolabs/sbc-raspberrypi/commit/de6eaa9c4d5b14a5c53435615984071ceaed92ae) chore: bump deps
+</p>
+</details>
+
+### Dependency Changes
+
+This release has no dependency changes
+
+Previous release can be found at [v0.1.5](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.5)
+
 ## [sbc-raspberrypi 0.1.5](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.5) (2025-05-02)
 
 Welcome to the v0.1.5 release of sbc-raspberrypi!
