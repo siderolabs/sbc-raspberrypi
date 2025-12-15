@@ -20,3 +20,4 @@ dtoverlay=disable-wifi
 # Disable UART for Raspberry Pi 5 to avoid U-boot compatibility issue.
 [pi5]
 enable_uart=0
+[all]
