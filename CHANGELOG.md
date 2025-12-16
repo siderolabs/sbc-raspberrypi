@@ -1,3 +1,34 @@
+## [sbc-raspberrypi 0.1.7](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.7) (2025-12-16)
+
+Welcome to the v0.1.7 release of sbc-raspberrypi!
+
+
+
+Please try out the release binaries and report any issues at
+https://github.com/siderolabs/sbc-raspberrypi/issues.
+
+### Contributors
+
+* Mateusz Urbanek
+* Oscar Virot
+* eseiker
+
+### Changes
+<details><summary>3 commits</summary>
+<p>
+
+* [`1e01fd5`](https://github.com/siderolabs/sbc-raspberrypi/commit/1e01fd5f6d542faebfc82a6c03d5493438875f88) fix: ensure we apply [all] filters to config
+* [`09feadd`](https://github.com/siderolabs/sbc-raspberrypi/commit/09feadd74a78dd4cba5d96018032bb55df4b9d8c) chore: update deps
+* [`b2390bd`](https://github.com/siderolabs/sbc-raspberrypi/commit/b2390bdb453802613ea1fa44bc60437851b1f133) fix: disable UART for Raspberry Pi 5 compatibility
+</p>
+</details>
+
+### Dependency Changes
+
+This release has no dependency changes
+
+Previous release can be found at [v0.1.6](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.6)
+
 ## [sbc-raspberrypi 0.1.6](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.6) (2025-11-13)
 
 Welcome to the v0.1.6 release of sbc-raspberrypi!
