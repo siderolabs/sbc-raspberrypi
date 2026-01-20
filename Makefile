@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2025-12-16T11:52:52Z by kres 4b09af7.
+# Generated on 2026-01-23T10:10:13Z by kres 1ffefb6.
 
 # common variables
 
@@ -37,6 +37,7 @@ PLATFORM ?= linux/amd64,linux/arm64
 PROGRESS ?= auto
 PUSH ?= false
 CI_ARGS ?=
+WITH_BUILD_DEBUG ?=
 BUILD_ARGS = --build-arg=SOURCE_DATE_EPOCH=$(SOURCE_DATE_EPOCH)
 BUILD_ARGS += --build-arg=PKGS_PREFIX="$(PKGS_PREFIX)"
 BUILD_ARGS += --build-arg=PKGS="$(PKGS)"
@@ -50,6 +51,8 @@ COMMON_ARGS += $(BUILD_ARGS)
 
 # extra variables
 
+PKGS_PREFIX ?= ghcr.io/siderolabs
+PKGS ?= v1.12.0-32-g4f8efaf
 TOOLS_PREFIX ?= ghcr.io/siderolabs
 TOOLS ?= v1.12.0
 
@@ -106,6 +109,10 @@ The registry and username can be overridden by exporting REGISTRY, and USERNAME
 respectively.
 
 endef
+
+ifneq (, $(filter $(WITH_BUILD_DEBUG), t true TRUE y yes 1))
+BUILD := BUILDX_EXPERIMENTAL=1 docker buildx debug --invoke /bin/sh --on error build
+endif
 
 all: $(TARGETS)  ## Builds all targets defined.
 

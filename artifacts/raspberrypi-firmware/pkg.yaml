@@ -3,6 +3,10 @@ variant: scratch
 shell: /bin/bash
 dependencies:
   - stage: base
+  - image: "{{ .BUILD_ARG_PKGS_PREFIX }}/kernel:{{ .BUILD_ARG_PKGS }}"
+    platform: linux/arm64
+    from: /
+    to: /kernel
 steps:
   - sources:
       - url: https://github.com/raspberrypi/firmware/archive/refs/tags/{{ .raspberrypi_firmware_version }}.tar.gz
@@ -16,6 +20,11 @@ steps:
       - |
         mkdir -p /rootfs/artifacts/arm64/firmware/boot
         cp -av boot/* /rootfs/artifacts/arm64/firmware/boot
+        # Downstream kernels, not used by Talos boot flow
+        rm /rootfs/artifacts/arm64/firmware/boot/kernel*
+        # At least now downstream Pi 5 dts are not compatible with mainline
+        rm /rootfs/artifacts/arm64/firmware/boot/bcm2712*
+        cp /kernel/dtb/broadcom/bcm2712* /rootfs/artifacts/arm64/firmware/boot/
 finalize:
   - from: /rootfs
     to: /rootfs
