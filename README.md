@@ -1,6 +1,7 @@
 # sbc-raspberrypi
 
-This repo provides the overlay for Raspberry Pi generic Talos image.
+This repo provides the overlay for building Raspberry Pi generic (models before Pi 5),
+Raspberry Pi 5, and RevolutionPi Talos images.
 
 For example usage instructions follow the [boot assets guide](https://www.talos.dev/latest/talos-guides/install/boot-assets/#example-raspberry-pi-overlay-with-imager).
 

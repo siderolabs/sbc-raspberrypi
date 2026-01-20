@@ -2,5 +2,6 @@ go 1.25.4
 
 use (
 	./installers/rpi_generic/src
+	./installers/rpi_5/src
 	./installers/revpi_generic/src
 )

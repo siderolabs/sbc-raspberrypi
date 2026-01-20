@@ -2,6 +2,7 @@ name: sbc-raspberrypi
 variant: scratch
 dependencies:
   - stage: rpi_generic
+  - stage: rpi_5
   - stage: revpi_generic
   - stage: raspberrypi-firmware
   - stage: revpi-firmware
