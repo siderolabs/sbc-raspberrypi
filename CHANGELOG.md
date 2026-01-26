@@ -1,3 +1,35 @@
+## [sbc-raspberrypi 0.1.8](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.8) (2026-01-26)
+
+Welcome to the v0.1.8 release of sbc-raspberrypi!
+
+
+
+Please try out the release binaries and report any issues at
+https://github.com/siderolabs/sbc-raspberrypi/issues.
+
+### Raspberry Pi 5 Support
+
+
+
+### Contributors
+
+* Dmitrii Sharshakov
+
+### Changes
+<details><summary>2 commits</summary>
+<p>
+
+* [`f35948c`](https://github.com/siderolabs/sbc-raspberrypi/commit/f35948c0d7fcf0adbd381d55bfae4d91379ae488) feat: add Raspberry Pi 5
+* [`9a3783b`](https://github.com/siderolabs/sbc-raspberrypi/commit/9a3783b361d7d3f79d9ac9bc272f9dd000c3f729) fix: replace Pi 5 dts with ones from the kernel package
+</p>
+</details>
+
+### Dependency Changes
+
+This release has no dependency changes
+
+Previous release can be found at [v0.1.7](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.7)
+
 ## [sbc-raspberrypi 0.1.7](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.7) (2025-12-16)
 
 Welcome to the v0.1.7 release of sbc-raspberrypi!
