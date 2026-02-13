@@ -1,0 +1,29 @@
+Index: b/arch/arm64/boot/dts/broadcom/bcm2712-ds.dtsi
+===================================================================
+--- a/arch/arm64/boot/dts/broadcom/bcm2712-ds.dtsi
++++ b/arch/arm64/boot/dts/broadcom/bcm2712-ds.dtsi
+@@ -143,7 +143,7 @@
+ 	};
+ 
+ 	pinctrl: pinctrl@7d504100 {
+-		compatible = "brcm,bcm2712-pinctrl";
++		compatible = "brcm,bcm2712c0-pinctrl";
+ 		reg = <0x7d504100 0x30>;
+ 
+ 		uarta_24_pins: uarta_24_pins {
+@@ -213,7 +213,7 @@
+ 	};
+ 
+ 	pinctrl_aon: pinctrl@7d510700 {
+-		compatible = "brcm,bcm2712-aon-pinctrl";
++		compatible = "brcm,bcm2712c0-aon-pinctrl";
+ 		reg = <0x7d510700 0x20>;
+ 
+ 		i2c3_m4_agpio0_pins: i2c3_m4_agpio0_pins {
+@@ -496,4 +496,4 @@
+ 
+ &pcie2 {
+ 	brcm,vdm-qos-map = /bits/ 8 <8 8 8 9 10 10 11 11>;
+-};
+\ No newline at end of file
++};

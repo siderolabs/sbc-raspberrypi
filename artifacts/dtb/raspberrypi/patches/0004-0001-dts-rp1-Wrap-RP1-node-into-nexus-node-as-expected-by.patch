@@ -1,0 +1,562 @@
+From 5084e13d34501811ac5927725dc5a1950cfb61d6 Mon Sep 17 00:00:00 2001
+From: "Ivan T. Ivanov" <iivanov@suse.de>
+Date: Thu, 15 May 2025 13:52:48 +0300
+Subject: [PATCH] dts: rp1: Wrap RP1 node into nexus node as expected by
+ upstream
+
+---
+ .../boot/dts/broadcom/bcm2712-rpi-5-b.dts     |   6 +-
+ .../boot/dts/broadcom/bcm2712-rpi-cm5.dtsi    |   6 +-
+ arch/arm64/boot/dts/broadcom/bcm2712-rpi.dtsi |   2 +-
+ arch/arm64/boot/dts/broadcom/rp1.dtsi         | 140 +++++++++---------
+ 4 files changed, 81 insertions(+), 73 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/broadcom/bcm2712-rpi-5-b.dts b/arch/arm64/boot/dts/broadcom/bcm2712-rpi-5-b.dts
+index 72e9e57a172..62ac3691248 100644
+--- a/arch/arm64/boot/dts/broadcom/bcm2712-rpi-5-b.dts
++++ b/arch/arm64/boot/dts/broadcom/bcm2712-rpi-5-b.dts
+@@ -138,9 +138,9 @@ &rp1 {
+ 
+ 	// outbound access aimed at PCIe 0_00xxxxxx -> RP1 c0_40xxxxxx
+ 	// This is the RP1 peripheral space
+-	ranges = <0xc0 0x40000000
+-		  0x02000000 0x00 0x00000000
+-		  0x00 0x00410000>;
++	ranges = <0x00 0x40000000
++		  0x01 0x00 0x00000000
++		  0x00 0x00400000>;
+ 
+ 	dma-ranges =
+ 	// inbound RP1 1x_xxxxxxxx -> PCIe 1x_xxxxxxxx
+diff --git a/arch/arm64/boot/dts/broadcom/bcm2712-rpi-cm5.dtsi b/arch/arm64/boot/dts/broadcom/bcm2712-rpi-cm5.dtsi
+index e122e666649..5f57fa5daa7 100644
+--- a/arch/arm64/boot/dts/broadcom/bcm2712-rpi-cm5.dtsi
++++ b/arch/arm64/boot/dts/broadcom/bcm2712-rpi-cm5.dtsi
+@@ -125,9 +125,9 @@ &rp1 {
+ 
+ 	// outbound access aimed at PCIe 0_00xxxxxx -> RP1 c0_40xxxxxx
+ 	// This is the RP1 peripheral space
+-	ranges = <0xc0 0x40000000
+-		  0x02000000 0x00 0x00000000
+-		  0x00 0x00410000>;
++	ranges = <0x00 0x40000000
++		  0x01 0x00 0x00000000
++		  0x00 0x00400000>;
+ 
+ 	dma-ranges =
+ 	// inbound RP1 1x_xxxxxxxx -> PCIe 1x_xxxxxxxx
+diff --git a/arch/arm64/boot/dts/broadcom/bcm2712-rpi.dtsi b/arch/arm64/boot/dts/broadcom/bcm2712-rpi.dtsi
+index 5c151d73f61..4a1a59388d8 100644
+--- a/arch/arm64/boot/dts/broadcom/bcm2712-rpi.dtsi
++++ b/arch/arm64/boot/dts/broadcom/bcm2712-rpi.dtsi
+@@ -321,7 +321,7 @@ &rp1 {
+ 	gpiomem@d0000 {
+ 		/* Export IO_BANKs, RIO_BANKs and PADS_BANKs to userspace */
+ 		compatible = "raspberrypi,gpiomem";
+-		reg = <0xc0 0x400d0000  0x0 0x30000>;
++		reg = <0x00 0x400d0000  0x0 0x30000>;
+ 		chardev-name = "gpiomem0";
+ 	};
+ };
+diff --git a/arch/arm64/boot/dts/broadcom/rp1.dtsi b/arch/arm64/boot/dts/broadcom/rp1.dtsi
+index 5e3eaac9f5a..a401aae1097 100644
+--- a/arch/arm64/boot/dts/broadcom/rp1.dtsi
++++ b/arch/arm64/boot/dts/broadcom/rp1.dtsi
+@@ -3,20 +3,27 @@
+ #include <dt-bindings/mfd/rp1.h>
+ 
+ &rp1_target {
++    rp1_nexus {
++	compatible = "pci1de4,1";
++	#address-cells = <3>;
++	#size-cells = <2>;
++	ranges = <0x01 0x00 0x00000000
++		  0x02000000 0x00 0x00000000
++		  0x0 0x400000>;
++	interrupt-controller;
++	#interrupt-cells = <2>;
++
+ 	rp1: rp1 {
+ 		compatible = "simple-bus";
+ 		#address-cells = <2>;
+ 		#size-cells = <2>;
+-		#interrupt-cells = <2>;
+-		interrupt-controller;
+-		interrupt-parent = <&rp1>;
+ 
+ 		// ranges and dma-ranges must be provided by the includer
+ 
+ 		rp1_mbox: mailbox@8000 {
+ 			compatible = "raspberrypi,rp1-mbox";
+ 			status = "disabled";
+-			reg = <0xc0 0x40008000  0x0 0x4000>;  // SYSCFG
++			reg = <0x00 0x40008000  0x0 0x4000>;  // SYSCFG
+ 			interrupts = <RP1_INT_SYSCFG IRQ_TYPE_LEVEL_HIGH>;
+ 			#mbox-cells = <1>;
+ 		};
+@@ -24,7 +31,7 @@ rp1_mbox: mailbox@8000 {
+ 		rp1_clocks: clocks@18000 {
+ 			compatible = "raspberrypi,rp1-clocks";
+ 			#clock-cells = <1>;
+-			reg = <0xc0 0x40018000 0x0 0x10038>;
++			reg = <0x00 0x40018000 0x0 0x10038>;
+ 			clocks = <&clk_xosc>;
+ 
+ 			assigned-clocks = <&rp1_clocks RP1_PLL_SYS_CORE>,
+@@ -61,7 +68,7 @@ rp1_clocks: clocks@18000 {
+ 
+ 		rp1_uart0: serial@30000 {
+ 			compatible = "arm,pl011-axi";
+-			reg = <0xc0 0x40030000  0x0 0x100>;
++			reg = <0x00 0x40030000  0x0 0x100>;
+ 			interrupts = <RP1_INT_UART0 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&rp1_clocks RP1_CLK_UART &rp1_clocks RP1_PLL_SYS_PRI_PH>;
+ 			clock-names = "uartclk", "apb_pclk";
+@@ -78,7 +85,7 @@ rp1_uart0: serial@30000 {
+ 
+ 		rp1_uart1: serial@34000 {
+ 			compatible = "arm,pl011-axi";
+-			reg = <0xc0 0x40034000  0x0 0x100>;
++			reg = <0x00 0x40034000  0x0 0x100>;
+ 			interrupts = <RP1_INT_UART1 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&rp1_clocks RP1_CLK_UART &rp1_clocks RP1_PLL_SYS_PRI_PH>;
+ 			clock-names = "uartclk", "apb_pclk";
+@@ -95,7 +102,7 @@ rp1_uart1: serial@34000 {
+ 
+ 		rp1_uart2: serial@38000 {
+ 			compatible = "arm,pl011-axi";
+-			reg = <0xc0 0x40038000  0x0 0x100>;
++			reg = <0x00 0x40038000  0x0 0x100>;
+ 			interrupts = <RP1_INT_UART2 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&rp1_clocks RP1_CLK_UART &rp1_clocks RP1_PLL_SYS_PRI_PH>;
+ 			clock-names = "uartclk", "apb_pclk";
+@@ -112,7 +119,7 @@ rp1_uart2: serial@38000 {
+ 
+ 		rp1_uart3: serial@3c000 {
+ 			compatible = "arm,pl011-axi";
+-			reg = <0xc0 0x4003c000  0x0 0x100>;
++			reg = <0x00 0x4003c000  0x0 0x100>;
+ 			interrupts = <RP1_INT_UART3 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&rp1_clocks RP1_CLK_UART &rp1_clocks RP1_PLL_SYS_PRI_PH>;
+ 			clock-names = "uartclk", "apb_pclk";
+@@ -129,7 +136,7 @@ rp1_uart3: serial@3c000 {
+ 
+ 		rp1_uart4: serial@40000 {
+ 			compatible = "arm,pl011-axi";
+-			reg = <0xc0 0x40040000  0x0 0x100>;
++			reg = <0x00 0x40040000  0x0 0x100>;
+ 			interrupts = <RP1_INT_UART4 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&rp1_clocks RP1_CLK_UART &rp1_clocks RP1_PLL_SYS_PRI_PH>;
+ 			clock-names = "uartclk", "apb_pclk";
+@@ -146,7 +153,7 @@ rp1_uart4: serial@40000 {
+ 
+ 		rp1_uart5: serial@44000 {
+ 			compatible = "arm,pl011-axi";
+-			reg = <0xc0 0x40044000  0x0 0x100>;
++			reg = <0x00 0x40044000  0x0 0x100>;
+ 			interrupts = <RP1_INT_UART5 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&rp1_clocks RP1_CLK_UART &rp1_clocks RP1_PLL_SYS_PRI_PH>;
+ 			clock-names = "uartclk", "apb_pclk";
+@@ -162,7 +169,7 @@ rp1_uart5: serial@44000 {
+ 		};
+ 
+ 		rp1_spi8: spi@4c000 {
+-			reg = <0xc0 0x4004c000  0x0 0x130>;
++			reg = <0x00 0x4004c000  0x0 0x130>;
+ 			compatible = "snps,dw-apb-ssi";
+ 			interrupts = <RP1_INT_SPI8 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&rp1_clocks RP1_CLK_SYS>;
+@@ -177,7 +184,7 @@ rp1_spi8: spi@4c000 {
+ 		};
+ 
+ 		rp1_spi0: spi@50000 {
+-			reg = <0xc0 0x40050000  0x0 0x130>;
++			reg = <0x00 0x40050000  0x0 0x130>;
+ 			compatible = "snps,dw-apb-ssi";
+ 			interrupts = <RP1_INT_SPI0 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&rp1_clocks RP1_CLK_SYS>;
+@@ -192,7 +199,7 @@ rp1_spi0: spi@50000 {
+ 		};
+ 
+ 		rp1_spi1: spi@54000 {
+-			reg = <0xc0 0x40054000  0x0 0x130>;
++			reg = <0x00 0x40054000  0x0 0x130>;
+ 			compatible = "snps,dw-apb-ssi";
+ 			interrupts = <RP1_INT_SPI1 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&rp1_clocks RP1_CLK_SYS>;
+@@ -207,7 +214,7 @@ rp1_spi1: spi@54000 {
+ 		};
+ 
+ 		rp1_spi2: spi@58000 {
+-			reg = <0xc0 0x40058000  0x0 0x130>;
++			reg = <0x00 0x40058000  0x0 0x130>;
+ 			compatible = "snps,dw-apb-ssi";
+ 			interrupts = <RP1_INT_SPI2 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&rp1_clocks RP1_CLK_SYS>;
+@@ -222,7 +229,7 @@ rp1_spi2: spi@58000 {
+ 		};
+ 
+ 		rp1_spi3: spi@5c000 {
+-			reg = <0xc0 0x4005c000  0x0 0x130>;
++			reg = <0x00 0x4005c000  0x0 0x130>;
+ 			compatible = "snps,dw-apb-ssi";
+ 			interrupts = <RP1_INT_SPI3 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&rp1_clocks RP1_CLK_SYS>;
+@@ -238,7 +245,7 @@ rp1_spi3: spi@5c000 {
+ 
+ 		// SPI4 is a target/slave interface
+ 		rp1_spi4: spi@60000 {
+-			reg = <0xc0 0x40060000  0x0 0x130>;
++			reg = <0x00 0x40060000  0x0 0x130>;
+ 			compatible = "snps,dw-apb-ssi";
+ 			interrupts = <RP1_INT_SPI4 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&rp1_clocks RP1_CLK_SYS>;
+@@ -259,7 +266,7 @@ slave {
+ 		};
+ 
+ 		rp1_spi5: spi@64000 {
+-			reg = <0xc0 0x40064000  0x0 0x130>;
++			reg = <0x00 0x40064000  0x0 0x130>;
+ 			compatible = "snps,dw-apb-ssi";
+ 			interrupts = <RP1_INT_SPI5 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&rp1_clocks RP1_CLK_SYS>;
+@@ -274,7 +281,7 @@ rp1_spi5: spi@64000 {
+ 		};
+ 
+ 		rp1_spi6: spi@68000 {
+-			reg = <0xc0 0x40068000  0x0 0x130>;
++			reg = <0x00 0x40068000  0x0 0x130>;
+ 			compatible = "snps,dw-apb-ssi";
+ 			interrupts = <RP1_INT_SPI6 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&rp1_clocks RP1_CLK_SYS>;
+@@ -290,7 +297,7 @@ rp1_spi6: spi@68000 {
+ 
+ 		// SPI7 is a target/slave interface
+ 		rp1_spi7: spi@6c000 {
+-			reg = <0xc0 0x4006c000  0x0 0x130>;
++			reg = <0x00 0x4006c000  0x0 0x130>;
+ 			compatible = "snps,dw-apb-ssi";
+ 			interrupts = <RP1_INT_SPI7 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&rp1_clocks RP1_CLK_SYS>;
+@@ -311,7 +318,7 @@ slave {
+ 		};
+ 
+ 		rp1_i2c0: i2c@70000 {
+-			reg = <0xc0 0x40070000  0x0 0x1000>;
++			reg = <0x00 0x40070000  0x0 0x1000>;
+ 			compatible = "snps,designware-i2c";
+ 			interrupts = <RP1_INT_I2C0 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&rp1_clocks RP1_CLK_SYS>;
+@@ -321,7 +328,7 @@ rp1_i2c0: i2c@70000 {
+ 		};
+ 
+ 		rp1_i2c1: i2c@74000 {
+-			reg = <0xc0 0x40074000  0x0 0x1000>;
++			reg = <0x00 0x40074000  0x0 0x1000>;
+ 			compatible = "snps,designware-i2c";
+ 			interrupts = <RP1_INT_I2C1 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&rp1_clocks RP1_CLK_SYS>;
+@@ -331,7 +338,7 @@ rp1_i2c1: i2c@74000 {
+ 		};
+ 
+ 		rp1_i2c2: i2c@78000 {
+-			reg = <0xc0 0x40078000  0x0 0x1000>;
++			reg = <0x00 0x40078000  0x0 0x1000>;
+ 			compatible = "snps,designware-i2c";
+ 			interrupts = <RP1_INT_I2C2 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&rp1_clocks RP1_CLK_SYS>;
+@@ -341,7 +348,7 @@ rp1_i2c2: i2c@78000 {
+ 		};
+ 
+ 		rp1_i2c3: i2c@7c000 {
+-			reg = <0xc0 0x4007c000  0x0 0x1000>;
++			reg = <0x00 0x4007c000  0x0 0x1000>;
+ 			compatible = "snps,designware-i2c";
+ 			interrupts = <RP1_INT_I2C3 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&rp1_clocks RP1_CLK_SYS>;
+@@ -351,7 +358,7 @@ rp1_i2c3: i2c@7c000 {
+ 		};
+ 
+ 		rp1_i2c4: i2c@80000 {
+-			reg = <0xc0 0x40080000  0x0 0x1000>;
++			reg = <0x00 0x40080000  0x0 0x1000>;
+ 			compatible = "snps,designware-i2c";
+ 			interrupts = <RP1_INT_I2C4 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&rp1_clocks RP1_CLK_SYS>;
+@@ -361,7 +368,7 @@ rp1_i2c4: i2c@80000 {
+ 		};
+ 
+ 		rp1_i2c5: i2c@84000 {
+-			reg = <0xc0 0x40084000  0x0 0x1000>;
++			reg = <0x00 0x40084000  0x0 0x1000>;
+ 			compatible = "snps,designware-i2c";
+ 			interrupts = <RP1_INT_I2C5 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&rp1_clocks RP1_CLK_SYS>;
+@@ -371,7 +378,7 @@ rp1_i2c5: i2c@84000 {
+ 		};
+ 
+ 		rp1_i2c6: i2c@88000 {
+-			reg = <0xc0 0x40088000  0x0 0x1000>;
++			reg = <0x00 0x40088000  0x0 0x1000>;
+ 			compatible = "snps,designware-i2c";
+ 			interrupts = <RP1_INT_I2C6 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&rp1_clocks RP1_CLK_SYS>;
+@@ -382,7 +389,7 @@ rp1_i2c6: i2c@88000 {
+ 
+ 		rp1_audio_out: audio_out@94000 {
+ 			compatible = "raspberrypi,rp1-audio-out";
+-			reg = <0xc0 0x40094000 0x0 0x4000>;
++			reg = <0x00 0x40094000 0x0 0x4000>;
+ 			clocks = <&rp1_clocks RP1_CLK_AUDIO_OUT>;
+ 			assigned-clocks = <&rp1_clocks RP1_CLK_AUDIO_OUT>;
+ 			assigned-clock-rates = <153600000>;
+@@ -396,7 +403,7 @@ rp1_audio_out: audio_out@94000 {
+ 
+ 		rp1_pwm0: pwm@98000 {
+ 			compatible = "raspberrypi,rp1-pwm";
+-			reg = <0xc0 0x40098000  0x0 0x100>;
++			reg = <0x00 0x40098000  0x0 0x100>;
+ 			#pwm-cells = <3>;
+ 			clocks = <&rp1_clocks RP1_CLK_PWM0>;
+ 			assigned-clocks = <&rp1_clocks RP1_CLK_PWM0>;
+@@ -406,7 +413,7 @@ rp1_pwm0: pwm@98000 {
+ 
+ 		rp1_pwm1: pwm@9c000 {
+ 			compatible = "raspberrypi,rp1-pwm";
+-			reg = <0xc0 0x4009c000  0x0 0x100>;
++			reg = <0x00 0x4009c000  0x0 0x100>;
+ 			#pwm-cells = <3>;
+ 			clocks = <&rp1_clocks RP1_CLK_PWM1>;
+ 			assigned-clocks = <&rp1_clocks RP1_CLK_PWM1>;
+@@ -415,7 +422,7 @@ rp1_pwm1: pwm@9c000 {
+ 		};
+ 
+ 		rp1_i2s0: i2s@a0000 {
+-			reg = <0xc0 0x400a0000  0x0 0x1000>;
++			reg = <0x00 0x400a0000  0x0 0x1000>;
+ 			compatible = "snps,designware-i2s";
+ 			// Providing an interrupt disables DMA
+ 			// interrupts = <RP1_INT_I2S0 IRQ_TYPE_LEVEL_HIGH>;
+@@ -429,7 +436,7 @@ rp1_i2s0: i2s@a0000 {
+ 		};
+ 
+ 		rp1_i2s1: i2s@a4000 {
+-			reg = <0xc0 0x400a4000  0x0 0x1000>;
++			reg = <0x00 0x400a4000  0x0 0x1000>;
+ 			compatible = "snps,designware-i2s";
+ 			// Providing an interrupt disables DMA
+ 			// interrupts = <RP1_INT_I2S1 IRQ_TYPE_LEVEL_HIGH>;
+@@ -443,7 +450,7 @@ rp1_i2s1: i2s@a4000 {
+ 		};
+ 
+ 		rp1_i2s2: i2s@a8000 {
+-			reg = <0xc0 0x400a8000  0x0 0x1000>;
++			reg = <0x00 0x400a8000  0x0 0x1000>;
+ 			compatible = "snps,designware-i2s";
+ 			// Providing an interrupt disables DMA
+ 			// interrupts = <RP1_INT_I2S2 IRQ_TYPE_LEVEL_HIGH>;
+@@ -453,7 +460,7 @@ rp1_i2s2: i2s@a8000 {
+ 
+ 		rp1_sdio_clk0: sdio_clk0@b0004 {
+ 			compatible = "raspberrypi,rp1-sdio-clk";
+-			reg = <0xc0 0x400b0004 0x0 0x1c>;
++			reg = <0x00 0x400b0004 0x0 0x1c>;
+ 			clocks = <&sdio_src &sdhci_core>;
+ 			clock-names = "src", "base";
+ 			#clock-cells = <0>;
+@@ -462,7 +469,7 @@ rp1_sdio_clk0: sdio_clk0@b0004 {
+ 
+ 		rp1_sdio_clk1: sdio_clk1@b4004 {
+ 			compatible = "raspberrypi,rp1-sdio-clk";
+-			reg = <0xc0 0x400b4004 0x0 0x1c>;
++			reg = <0x00 0x400b4004 0x0 0x1c>;
+ 			clocks = <&sdio_src &sdhci_core>;
+ 			clock-names = "src", "base";
+ 			#clock-cells = <0>;
+@@ -471,7 +478,7 @@ rp1_sdio_clk1: sdio_clk1@b4004 {
+ 
+ 		rp1_adc: adc@c8000 {
+ 			compatible = "raspberrypi,rp1-adc";
+-			reg = <0xc0 0x400c8000 0x0 0x4000>;
++			reg = <0x00 0x400c8000 0x0 0x4000>;
+ 			clocks = <&rp1_clocks RP1_CLK_ADC>;
+ 			clock-names = "adcclk";
+ 			#clock-cells = <0>;
+@@ -480,9 +487,9 @@ rp1_adc: adc@c8000 {
+ 		};
+ 
+ 		rp1_gpio: gpio@d0000 {
+-			reg = <0xc0 0x400d0000  0x0 0xc000>,
+-			      <0xc0 0x400e0000  0x0 0xc000>,
+-			      <0xc0 0x400f0000  0x0 0xc000>;
++			reg = <0x00 0x400d0000  0x0 0xc000>,
++			      <0x00 0x400e0000  0x0 0xc000>,
++			      <0x00 0x400f0000  0x0 0xc000>;
+ 			compatible = "raspberrypi,rp1-gpio";
+ 			interrupts = <RP1_INT_IO_BANK0 IRQ_TYPE_LEVEL_HIGH>,
+ 				     <RP1_INT_IO_BANK1 IRQ_TYPE_LEVEL_HIGH>,
+@@ -997,7 +1004,7 @@ rp1_audio_out_12_13: rp1_audio_out_12_13 {
+ 		};
+ 
+ 		rp1_eth: ethernet@100000 {
+-			reg = <0xc0 0x40100000  0x0 0x4000>;
++			reg = <0x00 0x40100000  0x0 0x4000>;
+ 			compatible = "raspberrypi,rp1-gem", "cdns,macb";
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+@@ -1017,10 +1024,10 @@ &rp1_clocks RP1_CLK_ETH_TSU
+ 
+ 		rp1_csi0: csi@110000 {
+ 			compatible = "raspberrypi,rp1-cfe";
+-			reg = <0xc0 0x40110000  0x0 0x100>, // CSI2 DMA address
+-			      <0xc0 0x40114000  0x0 0x100>, // PHY/CSI Host address
+-			      <0xc0 0x40120000  0x0 0x100>, // MIPI CFG address
+-			      <0xc0 0x40124000  0x0 0x1000>; // PiSP FE address
++			reg = <0x00 0x40110000  0x0 0x100>, // CSI2 DMA address
++			      <0x00 0x40114000  0x0 0x100>, // PHY/CSI Host address
++			      <0x00 0x40120000  0x0 0x100>, // MIPI CFG address
++			      <0x00 0x40124000  0x0 0x1000>; // PiSP FE address
+ 
+ 			// interrupts must match rp1_pisp_fe setup
+ 			interrupts = <RP1_INT_MIPI0 IRQ_TYPE_LEVEL_HIGH>;
+@@ -1036,10 +1043,10 @@ rp1_csi0: csi@110000 {
+ 
+ 		rp1_csi1: csi@128000 {
+ 			compatible = "raspberrypi,rp1-cfe";
+-			reg = <0xc0 0x40128000  0x0 0x100>, // CSI2 DMA address
+-			      <0xc0 0x4012c000  0x0 0x100>, // PHY/CSI Host address
+-			      <0xc0 0x40138000  0x0 0x100>, // MIPI CFG address
+-			      <0xc0 0x4013c000  0x0 0x1000>; // PiSP FE address
++			reg = <0x00 0x40128000  0x0 0x100>, // CSI2 DMA address
++			      <0x00 0x4012c000  0x0 0x100>, // PHY/CSI Host address
++			      <0x00 0x40138000  0x0 0x100>, // MIPI CFG address
++			      <0x00 0x4013c000  0x0 0x1000>; // PiSP FE address
+ 
+ 			// interrupts must match rp1_pisp_fe setup
+ 			interrupts = <RP1_INT_MIPI1 IRQ_TYPE_LEVEL_HIGH>;
+@@ -1054,7 +1061,7 @@ rp1_csi1: csi@128000 {
+ 		};
+ 
+ 		rp1_pio: pio@178000 {
+-			reg = <0xc0 0x40178000  0x0 0x20>;
++			reg = <0x00 0x40178000  0x0 0x20>;
+ 			compatible = "raspberrypi,rp1-pio";
+ 			firmware = <&rp1_firmware>;
+ 			dmas = <&rp1_dma RP1_DMA_PIO_CH0_TX>, <&rp1_dma RP1_DMA_PIO_CH0_RX>,
+@@ -1066,7 +1073,7 @@ rp1_pio: pio@178000 {
+ 		};
+ 
+ 		rp1_mmc0: mmc@180000 {
+-			reg = <0xc0 0x40180000  0x0 0x100>;
++			reg = <0x00 0x40180000  0x0 0x100>;
+ 			compatible = "raspberrypi,rp1-dwcmshc";
+ 			interrupts = <RP1_INT_SDIO0 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&rp1_clocks RP1_CLK_SYS &sdhci_core
+@@ -1082,7 +1089,7 @@ &rp1_clocks RP1_CLK_SDIO_TIMER
+ 		};
+ 
+ 		rp1_mmc1: mmc@184000 {
+-			reg = <0xc0 0x40184000  0x0 0x100>;
++			reg = <0x00 0x40184000  0x0 0x100>;
+ 			compatible = "raspberrypi,rp1-dwcmshc";
+ 			interrupts = <RP1_INT_SDIO1 IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&rp1_clocks RP1_CLK_SYS &sdhci_core
+@@ -1098,7 +1105,7 @@ &rp1_clocks RP1_CLK_SDIO_TIMER
+ 		};
+ 
+ 		rp1_dma: dma@188000 {
+-			reg = <0xc0 0x40188000  0x0 0x1000>;
++			reg = <0x00 0x40188000  0x0 0x1000>;
+ 			compatible = "snps,axi-dma-1.01a";
+ 			interrupts = <RP1_INT_DMA IRQ_TYPE_LEVEL_HIGH>;
+ 			clocks = <&rp1_clocks RP1_CLK_DMA &rp1_clocks RP1_CLK_SYS>;
+@@ -1116,7 +1123,7 @@ rp1_dma: dma@188000 {
+ 		};
+ 
+ 		rp1_usb0: usb@200000 {
+-			reg = <0xc0 0x40200000  0x0 0x100000>;
++			reg = <0x00 0x40200000  0x0 0x100000>;
+ 			compatible = "snps,dwc3";
+ 			dr_mode = "host";
+ 			usb3-lpm-capable;
+@@ -1133,7 +1140,7 @@ rp1_usb0: usb@200000 {
+ 		};
+ 
+ 		rp1_usb1: usb@300000 {
+-			reg = <0xc0 0x40300000  0x0 0x100000>;
++			reg = <0x00 0x40300000  0x0 0x100000>;
+ 			compatible = "snps,dwc3";
+ 			dr_mode = "host";
+ 			usb3-lpm-capable;
+@@ -1152,9 +1159,9 @@ rp1_usb1: usb@300000 {
+ 		rp1_dsi0: dsi@110000 {
+ 			compatible = "raspberrypi,rp1dsi";
+ 			status = "disabled";
+-			reg = <0xc0 0x40118000  0x0 0x1000>,  // MIPI0 DSI DMA (ArgonDPI)
+-			      <0xc0 0x4011c000  0x0 0x1000>,  // MIPI0 DSI Host (SNPS)
+-			      <0xc0 0x40120000  0x0 0x1000>;  // MIPI0 CFG
++			reg = <0x00 0x40118000  0x0 0x1000>,  // MIPI0 DSI DMA (ArgonDPI)
++			      <0x00 0x4011c000  0x0 0x1000>,  // MIPI0 DSI Host (SNPS)
++			      <0x00 0x40120000  0x0 0x1000>;  // MIPI0 CFG
+ 
+ 			interrupts = <RP1_INT_MIPI0 IRQ_TYPE_LEVEL_HIGH>;
+ 
+@@ -1172,9 +1179,9 @@ rp1_dsi0: dsi@110000 {
+ 		rp1_dsi1: dsi@128000 {
+ 			compatible = "raspberrypi,rp1dsi";
+ 			status = "disabled";
+-			reg = <0xc0 0x40130000  0x0 0x1000>,  // MIPI1 DSI DMA (ArgonDPI)
+-		              <0xc0 0x40134000  0x0 0x1000>,  // MIPI1 DSI Host (SNPS)
+-		              <0xc0 0x40138000  0x0 0x1000>;  // MIPI1 CFG
++			reg = <0x00 0x40130000  0x0 0x1000>,  // MIPI1 DSI DMA (ArgonDPI)
++		              <0x00 0x40134000  0x0 0x1000>,  // MIPI1 DSI Host (SNPS)
++		              <0x00 0x40138000  0x0 0x1000>;  // MIPI1 CFG
+ 
+ 			interrupts = <RP1_INT_MIPI1 IRQ_TYPE_LEVEL_HIGH>;
+ 
+@@ -1194,8 +1201,8 @@ rp1_dsi1: dsi@128000 {
+ 		rp1_vec: vec@144000 {
+ 			compatible = "raspberrypi,rp1vec";
+ 			status = "disabled";
+-			reg = <0xc0 0x40144000  0x0 0x1000>, // VIDEO_OUT_VEC
+-			      <0xc0 0x40140000  0x0 0x1000>; // VIDEO_OUT_CFG
++			reg = <0x00 0x40144000  0x0 0x1000>, // VIDEO_OUT_VEC
++			      <0x00 0x40140000  0x0 0x1000>; // VIDEO_OUT_CFG
+ 
+ 			interrupts = <RP1_INT_VIDEO_OUT IRQ_TYPE_LEVEL_HIGH>;
+ 
+@@ -1215,8 +1222,8 @@ rp1_vec: vec@144000 {
+ 		rp1_dpi: dpi@148000 {
+ 			compatible = "raspberrypi,rp1dpi";
+ 			status = "disabled";
+-			reg = <0xc0 0x40148000  0x0 0x1000>, // VIDEO_OUT DPI
+-			      <0xc0 0x40140000  0x0 0x1000>; // VIDEO_OUT_CFG
++			reg = <0x00 0x40148000  0x0 0x1000>, // VIDEO_OUT DPI
++			      <0x00 0x40140000  0x0 0x1000>; // VIDEO_OUT_CFG
+ 
+ 			interrupts = <RP1_INT_VIDEO_OUT IRQ_TYPE_LEVEL_HIGH>;
+ 
+@@ -1231,10 +1238,10 @@ rp1_dpi: dpi@148000 {
+ 
+ 		sram: sram@400000 {
+ 			compatible = "mmio-sram";
+-			reg = <0xc0 0x40400000  0x0 0x10000>;
++			reg = <0x00 0x40400000  0x0 0x10000>;
+ 			#address-cells = <1>;
+ 			#size-cells = <1>;
+-			ranges = <0  0xc0 0x40400000  0x10000>;
++			ranges = <0  0x00 0x40400000  0x10000>;
+ 
+ 			rp1_fw_shmem: shmem@ff00 {
+ 				compatible = "raspberrypi,rp1-shmem";
+@@ -1242,6 +1249,7 @@ rp1_fw_shmem: shmem@ff00 {
+ 			};
+ 		};
+ 	};
++    };
+ };
+ 
+ &clocks {
+-- 
+2.43.0
+

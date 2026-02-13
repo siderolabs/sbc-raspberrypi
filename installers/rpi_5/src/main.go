@@ -41,7 +41,8 @@ func (i *RpiInstaller) GetOptions(extra rpiOptions) (overlay.Options, error) {
 }
 
 func (i *RpiInstaller) Install(options overlay.InstallOptions[rpiOptions]) error {
-	err := copy.Dir(filepath.Join(options.ArtifactsPath, "arm64/firmware/boot"), filepath.Join(options.MountPrefix, "/boot/EFI"))
+	// Pi 5 does not need any binaries from raspberrypi-firmware, so only install dtbs (built from Linux) and U-Boot
+	err := copy.Dir(filepath.Join(options.ArtifactsPath, "rpi_5"), filepath.Join(options.MountPrefix, "/boot/EFI"))
 	if err != nil {
 		return err
 	}

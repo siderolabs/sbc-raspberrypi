@@ -1,0 +1,47 @@
+From d0aed470f09dda04825f5ac0c287cd6bbed1f10f Mon Sep 17 00:00:00 2001
+From: Andrea della Porta <andrea.porta@suse.com>
+Date: Tue, 15 Apr 2025 17:40:34 +0300
+Subject: [PATCH 3/3] ARM: dts: bcm2711: Fix xHCI power-domain
+
+During s2idle tests on the Raspberry CM4 the VPU firmware always crashes
+on xHCI power-domain resume:
+
+root@raspberrypi:/sys/power# echo freeze > state
+[   70.724347] xhci_suspend finished
+[   70.727730] xhci_plat_suspend finished
+[   70.755624] bcm2835-power bcm2835-power: Power grafx off
+[   70.761127]  USB: Set power to 0
+
+[   74.653040]  USB: Failed to set power to 1 (-110)
+
+This seems to be caused because of the mixed usage of
+raspberrypi-power and bcm2835-power at the same time. So avoid
+the usage of the VPU firmware power-domain driver, which
+prevents the VPU crash.
+
+Fixes: 522c35e08b53 ("ARM: dts: bcm2711: Add BCM2711 xHCI support")
+Link: https://github.com/raspberrypi/linux/issues/6537
+Signed-off-by: Stefan Wahren <wahrenst@gmx.net>
+Link: https://lore.kernel.org/r/20250201112729.31509-1-wahrenst@gmx.net
+Signed-off-by: Florian Fainelli <florian.fainelli@broadcom.com>
+Signed-off-by: Andrea della Porta <andrea.porta@suse.com>
+---
+ arch/arm/boot/dts/broadcom/bcm2711-rpi-ds.dtsi | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm/boot/dts/broadcom/bcm2711-rpi-ds.dtsi b/arch/arm/boot/dts/broadcom/bcm2711-rpi-ds.dtsi
+index 8326e3e0110..8d7ef09923d 100644
+--- a/arch/arm/boot/dts/broadcom/bcm2711-rpi-ds.dtsi
++++ b/arch/arm/boot/dts/broadcom/bcm2711-rpi-ds.dtsi
+@@ -145,7 +145,7 @@ xhci: xhci@7e9c0000 {
+ 		status = "disabled";
+ 		reg = <0x0 0x7e9c0000  0x0 0x100000>;
+ 		interrupts = <GIC_SPI 176 IRQ_TYPE_LEVEL_HIGH>;
+-		power-domains = <&power RPI_POWER_DOMAIN_USB>;
++		power-domains = <&pm BCM2835_POWER_DOMAIN_USB>;
+ 	};
+ };
+ 
+-- 
+2.43.0
+

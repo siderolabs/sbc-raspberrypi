@@ -1,0 +1,13 @@
+/dts-v1/;
+/plugin/;
+
+/{
+	compatible = "brcm,bcm2712";
+
+	fragment@0 {
+		target = <&blconfig>;
+		__overlay__ {
+			reg = <0x00  0x3fd16cc0 0x00 0x38>;
+		};
+	};
+};

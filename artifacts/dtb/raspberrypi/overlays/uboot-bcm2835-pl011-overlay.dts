@@ -1,0 +1,20 @@
+/*
+ * As opposed to the upstream/downstream kernel, u-boot needs a special
+ * compatible string to access RPi, RPi2 and RPi0's serial consoles. This was
+ * removed from both upstream and downstream Linux's device-trees as there is
+ * no existing binding or use for it. While we fix this in upstream u-boot,
+ * this overlay fixes booting on those platforms.
+ */
+/dts-v1/;
+/plugin/;
+
+/{
+	compatible = "brcm,bcm2835";
+
+	fragment@0 {
+		target = <&uart0>;
+		__overlay__ {
+			compatible = "brcm,bcm2835-pl011", "arm,pl011", "arm,primecell";
+		};
+	};
+};

@@ -1,0 +1,31 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "brcm,bcm2711";
+
+	fragment@0 {
+		target-path = "/";
+		__overlay__ {
+
+			smbios {
+				compatible = "u-boot,sysinfo-smbios";
+				smbios {
+					system {
+						manufacturer = "raspberrypi";
+						product = "rpi";
+					};
+					baseboard {
+						manufacturer = "raspberrypi";
+						product = "rpi";
+					};
+					chassis {
+						manufacturer = "raspberrypi";
+						product = "rpi";
+					};
+				};
+			};
+		};
+	};
+};
+

@@ -1,0 +1,32 @@
+From 9d36eb65e475361db8751fa6a155c9bdeaa2bcdd Mon Sep 17 00:00:00 2001
+From: "Ivan T. Ivanov" <iivanov@suse.de>
+Date: Tue, 30 May 2023 09:50:53 +0300
+Subject: [PATCH] ARM: dts: bcm2711-rpi: Reuse bcm2836 vchiq driver
+
+Upstream vchiq driver don't support bcm2711, yet. Switch
+to bcm2836 implementation which is good enough to make audio
+trough 3.5mm jack working fine.
+
+This fixes: https://bugzilla.opensuse.org/show_bug.cgi?id=1209314
+
+Signed-off-by: Ivan T. Ivanov <iivanov@suse.de>
+---
+ arch/arm/boot/dts/broadcom/bcm2711-rpi-ds.dtsi | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm/boot/dts/broadcom/bcm2711-rpi-ds.dtsi b/arch/arm/boot/dts/broadcom/bcm2711-rpi-ds.dtsi
+index bd5c297..9956368 100644
+--- a/arch/arm/boot/dts/broadcom/bcm2711-rpi-ds.dtsi
++++ b/arch/arm/boot/dts/broadcom/bcm2711-rpi-ds.dtsi
+@@ -126,7 +126,7 @@
+ };
+ 
+ &vchiq {
+-	compatible = "brcm,bcm2711-vchiq";
++	compatible = "brcm,bcm2836-vchiq";
+ };
+ 
+ &firmwarekms {
+-- 
+2.35.3
+

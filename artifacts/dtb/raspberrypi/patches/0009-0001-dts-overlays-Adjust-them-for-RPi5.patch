@@ -1,0 +1,197 @@
+From b73602e0a32408605a9fe7b4dd29e0402b1fa8e3 Mon Sep 17 00:00:00 2001
+From: "Ivan T. Ivanov" <iivanov@suse.de>
+Date: Thu, 23 Oct 2025 03:30:36 +0300
+Subject: [PATCH] dts: overlays: Adjust them for RPi5
+
+- Add 64 bit size CMA overlay
+  Compared to older devices RPi5 uses #size-cells=<2>.
+  Create new overlay and add it to overlay_map so it
+  could automagicaly loaded by the firmware.
+
+- Add map for enabling Bluetooth on RPi5
+  Bluetooth on RPi5 do not need to be enabled, but
+  because we unconditionally enable-bt for all
+  devices create similar overlay for RPi5 and
+  add it to overlay_map.
+
+- Add map for upstream overlay on RPi5
+  Create empty upstream overlay to silence firmware warnings.
+---
+ arch/arm/boot/dts/overlays/Makefile           |  1 +
+ arch/arm/boot/dts/overlays/cma64-overlay.dts  | 40 +++++++++++++++++++
+ .../dts/overlays/enable-bt-pi5-overlay.dts    | 13 ++++++
+ arch/arm/boot/dts/overlays/overlay_map.dts    | 24 +++++++++++
+ arch/arm/boot/dts/overlays/upstream-pi5.dts   |  9 +++++
+ .../dts/overlays/vc4-kms-v3d-pi5-overlay.dts  |  4 +-
+ 6 files changed, 89 insertions(+), 2 deletions(-)
+ create mode 100644 arch/arm/boot/dts/overlays/cma64-overlay.dts
+ create mode 100644 arch/arm/boot/dts/overlays/enable-bt-pi5-overlay.dts
+ create mode 100644 arch/arm/boot/dts/overlays/upstream-pi5.dts
+
+diff --git a/arch/arm/boot/dts/overlays/Makefile b/arch/arm/boot/dts/overlays/Makefile
+index e142a7d..88bfdc2 100644
+--- a/arch/arm/boot/dts/overlays/Makefile
++++ b/arch/arm/boot/dts/overlays/Makefile
+@@ -44,6 +44,7 @@ dtbo-$(CONFIG_ARCH_BCM2835) += \
+ 	cirrus-wm5102.dtbo \
+ 	cm-swap-i2c0.dtbo \
+ 	cma.dtbo \
++	cma64.dtbo \
+ 	crystalfontz-cfa050_pi_m.dtbo \
+ 	cutiepi-panel.dtbo \
+ 	dacberry400.dtbo \
+diff --git a/arch/arm/boot/dts/overlays/cma64-overlay.dts b/arch/arm/boot/dts/overlays/cma64-overlay.dts
+new file mode 100644
+index 0000000..92d25d3
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/cma64-overlay.dts
+@@ -0,0 +1,40 @@
++/*
++ * cma64.dts
++ */
++
++/dts-v1/;
++/plugin/;
++
++/*
++ * "cma" overlay uses  #size-cells = <1>. Raspberry Pi 5 uses #size-cells = <2>
++ */
++
++/ {
++	compatible = "brcm,bcm2712";
++
++	fragment@0 {
++		target = <&cma>;
++		frag0: __overlay__ {
++			/*
++			 * The default size when using this overlay is 256 MB
++			 * and should be kept as is for backwards
++			 * compatibility.
++			 */
++			size = <0x0 0x10000000>;
++		};
++	};
++
++	__overrides__ {
++		cma-512 = <&frag0>,"size:4=0x20000000";
++		cma-448 = <&frag0>,"size:4=0x1c000000";
++		cma-384 = <&frag0>,"size:4=0x18000000";
++		cma-320 = <&frag0>,"size:4=0x14000000";
++		cma-256 = <&frag0>,"size:4=0x10000000";
++		cma-192 = <&frag0>,"size:4=0x0C000000";
++		cma-128 = <&frag0>,"size:4=0x08000000";
++		cma-96  = <&frag0>,"size:4=0x06000000";
++		cma-64  = <&frag0>,"size:4=0x04000000";
++		cma-size = <&frag0>,"size:4"; /* in bytes, 4MB aligned */
++		cma-default = <0>,"-0";
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/enable-bt-pi5-overlay.dts b/arch/arm/boot/dts/overlays/enable-bt-pi5-overlay.dts
+new file mode 100644
+index 0000000..21cb04d
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/enable-bt-pi5-overlay.dts
+@@ -0,0 +1,13 @@
++/dts-v1/;
++/plugin/;
++
++/{
++	compatible = "brcm,bcm2712";
++
++	fragment@0 {
++		target = <&bluetooth>;
++		__overlay__ {
++			status = "okay";
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/overlays/overlay_map.dts b/arch/arm/boot/dts/overlays/overlay_map.dts
+index 6fa5979..6d6c5e6 100644
+--- a/arch/arm/boot/dts/overlays/overlay_map.dts
++++ b/arch/arm/boot/dts/overlays/overlay_map.dts
+@@ -20,6 +20,16 @@
+ 		deprecated = "use i2c-sensor,bmp085";
+ 	};
+ 
++	cma {
++		bcm2835;
++		bcm2711;
++		bcm2712 = "cma64";
++	};
++
++	cma64 {
++		bcm2712;
++	};
++
+ 	cm-swap-i2c0 {
+ 		bcm2835;
+ 		bcm2711;
+@@ -53,6 +63,15 @@
+ 		bcm2712;
+ 	};
+ 
++	enable-bt {
++		bcm2711;
++		bcm2712 = "enable-bt-pi5";
++	};
++
++	enable-bt-pi5 {
++		bcm2712;
++	};
++
+ 	hifiberry-adc8x {
+ 		bcm2712;
+ 	};
+@@ -462,6 +481,7 @@
+ 	upstream {
+ 		bcm2835;
+ 		bcm2711 = "upstream-pi4";
++		bcm2712 = "upstream-pi5";
+ 	};
+ 
+ 	upstream-aux-interrupt {
+@@ -472,6 +492,10 @@
+ 		bcm2711;
+ 	};
+ 
++	upstream-pi5 {
++		bcm2712;
++	};
++
+ 	vc4-fkms-v3d {
+ 		bcm2835;
+ 		bcm2711 = "vc4-fkms-v3d-pi4";
+diff --git a/arch/arm/boot/dts/overlays/upstream-pi5.dts b/arch/arm/boot/dts/overlays/upstream-pi5.dts
+new file mode 100644
+index 0000000..e0e0a04
+--- /dev/null
++++ b/arch/arm/boot/dts/overlays/upstream-pi5.dts
+@@ -0,0 +1,9 @@
++//
++
++/dts-v1/;
++/plugin/;
++
++
++/ {
++	compatible = "brcm,bcm2712";
++};
+diff --git a/arch/arm/boot/dts/overlays/vc4-kms-v3d-pi5-overlay.dts b/arch/arm/boot/dts/overlays/vc4-kms-v3d-pi5-overlay.dts
+index f887818..e9504a7 100644
+--- a/arch/arm/boot/dts/overlays/vc4-kms-v3d-pi5-overlay.dts
++++ b/arch/arm/boot/dts/overlays/vc4-kms-v3d-pi5-overlay.dts
+@@ -1,9 +1,9 @@
+ // SPDX-License-Identifier: GPL-2.0
+ 
+-#include "cma-overlay.dts"
++#include "cma64-overlay.dts"
+ 
+ &frag0 {
+-	size = <(64*1024*1024)>;
++	size = <0x0 (64*1024*1024)>;
+ };
+ 
+ / {
+-- 
+2.51.0
+

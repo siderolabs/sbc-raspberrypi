@@ -1,0 +1,40 @@
+From b925461f55fcd1de4b30dae01786c2c703394cb4 Mon Sep 17 00:00:00 2001
+From: "Ivan T. Ivanov" <iivanov@suse.de>
+Date: Wed, 18 Jun 2025 15:58:17 +0300
+Subject: [PATCH] ARM: dts: bcm2712: Slow down eMMC interface
+
+---
+ arch/arm64/boot/dts/broadcom/bcm2712-ds.dtsi      | 1 -
+ arch/arm64/boot/dts/broadcom/bcm2712-rpi-cm5.dtsi | 3 ---
+ 2 files changed, 4 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/broadcom/bcm2712-ds.dtsi b/arch/arm64/boot/dts/broadcom/bcm2712-ds.dtsi
+index 95482c40a9e..441eb51b73e 100644
+--- a/arch/arm64/boot/dts/broadcom/bcm2712-ds.dtsi
++++ b/arch/arm64/boot/dts/broadcom/bcm2712-ds.dtsi
+@@ -401,7 +401,6 @@ sdio2: mmc@1100000 {
+ 		clocks = <&clk_emmc2>;
+ 		sdhci-caps-mask = <0x0000C000 0x0>;
+ 		sdhci-caps = <0x0 0x0>;
+-		supports-cqe = <1>;
+ 		mmc-ddr-3_3v;
+ 		status = "disabled";
+ 	};
+diff --git a/arch/arm64/boot/dts/broadcom/bcm2712-rpi-cm5.dtsi b/arch/arm64/boot/dts/broadcom/bcm2712-rpi-cm5.dtsi
+index 5f57fa5daa7..c5c9abe9fda 100644
+--- a/arch/arm64/boot/dts/broadcom/bcm2712-rpi-cm5.dtsi
++++ b/arch/arm64/boot/dts/broadcom/bcm2712-rpi-cm5.dtsi
+@@ -294,10 +294,7 @@ &sdio1 {
+ 	sd-uhs-ddr50;
+ 	sd-uhs-sdr104;
+ 	mmc-hs200-1_8v;
+-	mmc-hs400-1_8v;
+-	mmc-hs400-enhanced-strobe;
+ 	broken-cd;
+-	supports-cqe = <1>;
+ 	status = "okay";
+ };
+ 
+-- 
+2.43.0
+

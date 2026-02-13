@@ -1,0 +1,46 @@
+From b9239483e122a6236fa75841f727bc1ad7a6240f Mon Sep 17 00:00:00 2001
+From: "Ivan T. Ivanov" <iivanov@suse.de>
+Date: Mon, 11 Dec 2023 09:54:46 +0100
+Subject: [PATCH] Revert "bcm2711-rpi-ds: Switch to dma40 channel for hdmi
+ audio"
+
+They are vendor changes in bcm2835-dma driver around new RPi5
+which  makes new device trees unusable without corresponding
+changes in DMA driver.
+
+Fixes [1] [RPi4] kernel: vc4_hdmi fef00700.hdmi: Could not...
+
+[1] https://bugzilla.suse.com/show_bug.cgi?id=1217512
+
+This reverts commit 0491a0aecb999b1a013ad4a6ad3816c535ac6e73.
+
+Signed-off-by: Ivan T. Ivanov <iivanov@suse.de>
+---
+ arch/arm/boot/dts/broadcom/bcm2711-rpi-ds.dtsi | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm/boot/dts/broadcom/bcm2711-rpi-ds.dtsi b/arch/arm/boot/dts/broadcom/bcm2711-rpi-ds.dtsi
+index 968db6362989..147a56fdbb68 100644
+--- a/arch/arm/boot/dts/broadcom/bcm2711-rpi-ds.dtsi
++++ b/arch/arm/boot/dts/broadcom/bcm2711-rpi-ds.dtsi
+@@ -374,7 +374,7 @@ &hdmi0 {
+ 		 <&firmware_clocks 14>,
+ 		 <&dvp 0>,
+ 		 <&clk_27MHz>;
+-	dmas = <&dma40 (10|(1<<30)|(1<<24)|(10<<16)|(15<<20))>;
++	dmas = <&dma (10|(1<<27)|(1<<24)|(10<<16)|(15<<20))>;
+ 	status = "disabled";
+ };
+ 
+@@ -407,7 +407,7 @@ &hdmi1 {
+ 		 <&firmware_clocks 14>,
+ 		 <&dvp 1>,
+ 		 <&clk_27MHz>;
+-	dmas = <&dma40 (17|(1<<30)|(1<<24)|(10<<16)|(15<<20))>;
++	dmas = <&dma (17|(1<<27)|(1<<24)|(10<<16)|(15<<20))>;
+ 	status = "disabled";
+ };
+ 
+-- 
+2.35.3
+

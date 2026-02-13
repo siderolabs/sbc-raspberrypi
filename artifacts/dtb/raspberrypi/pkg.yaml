@@ -1,0 +1,58 @@
+name: dtb-raspberrypi
+variant: scratch
+shell: /bin/bash
+dependencies:
+  - stage: base
+steps:
+  - network: default
+    sources:
+      - url: https://github.com/raspberrypi/linux/archive/refs/tags/{{ .raspberrypi_kernel_version }}.tar.gz
+        destination: raspberrypi-linux.tar.gz
+        sha256: "{{ .raspberrypi_kernel_sha256 }}"
+        sha512: "{{ .raspberrypi_kernel_sha512 }}"
+    prepare:
+      - |
+        tar xf raspberrypi-linux.tar.gz --strip-components=1
+        rm raspberrypi-linux.tar.gz
+
+        for patch in $(find /pkg/patches -type f -name "*.patch" | sort); do
+          echo "Applying patch $patch"
+          patch -p1 < $patch || (echo "Failed to apply patch $patch" && exit 1)
+        done
+
+        mkdir -p arch/arm/boot/dts/overlays/
+        cp -av /pkg/overlays/* arch/arm/boot/dts/overlays/
+  - build:
+      - |
+        mkdir -p out/overlays
+
+        export DTC_FLAGS="-R 4 -p 0x1000 -@ -H epapr"
+        for dts in arch/arm64/boot/dts/broadcom/bcm27*dts; do
+            # bcm2712-d-rpi-5-b.dts -> bcm2712-d-rpi-5-b
+            target=$(basename ${dts%*.dts})
+            cpp -nostdinc -I include -I arch -undef -x assembler-with-cpp -I scripts/dtc/include-prefixes/ -D__DTS__ -DFIRMWARE_UPDATED -P $dts -o out/$target.dts
+            dtc -O dtb $DTC_FLAGS -o out/$target.dtb out/$target.dts
+        done
+
+        export DTC_FLAGS="-R 0 -p 0 -@ -H epapr"
+        for dts in arch/arm/boot/dts/overlays/*dts; do
+            # disable-v3d-overlay.dts -> disable-v3d
+            target=$(basename ${dts%*.dts})
+            target=${target%*-overlay}
+            cpp -nostdinc -I include -I arch -undef -x assembler-with-cpp -I scripts/dtc/include-prefixes/ -D__DTS__ -DFIRMWARE_UPDATED -P $dts -o out/overlays/$target.dts
+            dtc -O dtb $DTC_FLAGS -o out/overlays/$target.dtbo out/overlays/$target.dts
+        done
+
+        # Match the names firmware wants.
+        mv out/overlays/hat_map.dtbo out/overlays/hat_map.dtb
+        mv out/overlays/overlay_map.dtbo out/overlays/overlay_map.dtb
+    install:
+      - |
+        mkdir -p /rootfs/overlays
+
+        cp -av out/bcm2712*.dtb /rootfs/
+        cp -av out/overlays/*.dtbo out/overlays/*.dtb arch/arm/boot/dts/overlays/README /rootfs/overlays/
+        cp -av COPYING /rootfs/COPYING.linux
+finalize:
+  - from: /rootfs
+    to: /

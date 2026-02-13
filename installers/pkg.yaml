@@ -5,6 +5,11 @@ dependencies:
   - stage: rpi_5
   - stage: revpi_generic
   - stage: raspberrypi-firmware
+  # TODO: replace with Linux ones once all the boards are supported upstream
+  - stage: dtb-raspberrypi
+    platform: linux/arm64
+    from: /
+    to: /rootfs/artifacts/rpi_5
   - stage: revpi-firmware
     platform: linux/arm64
   - stage: u-boot
