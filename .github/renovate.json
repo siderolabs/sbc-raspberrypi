@@ -56,13 +56,6 @@
             ]
         },
         {
-            "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.?(?<patch>\\d+)?$",
-            "matchPackageNames": [
-                "u-boot/u-boot",
-                "ARM-software/arm-trusted-firmware"
-            ]
-        },
-        {
             "versioning": "regex:^\\d+\\.(?<major>\\d{4})(?<minor>\\d{2})(?<patch>\\d{2})$",
             "matchPackageNames": [
                 "raspberrypi/firmware"
@@ -72,6 +65,12 @@
             "versioning": "regex:^stable_(?<major>\\d{4})(?<minor>\\d{2})(?<patch>\\d{2})$",
             "matchPackageNames": [
                 "raspberrypi/linux"
+            ]
+        },
+        {
+            "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)(?<prerelease>-rc\\d+)?$",
+            "matchPackageNames": [
+                "u-boot/u-boot"
             ]
         }
     ],

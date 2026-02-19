@@ -21,19 +21,18 @@ spec:
 ---
 kind: common.Build
 spec:
-    ignoredPaths:
-      - go.work.sum
+  ignoredPaths:
+    - go.work.sum
 ---
 kind: common.Renovate
 spec:
   packageRules:
-    - matchPackageNames:
-        - u-boot/u-boot
-        - ARM-software/arm-trusted-firmware
-      versioning: 'regex:^(?<major>\d+)\.(?<minor>\d+)\.?(?<patch>\d+)?$'
     - matchPackageNames:
         - raspberrypi/firmware
       versioning: 'regex:^\d+\.(?<major>\d{4})(?<minor>\d{2})(?<patch>\d{2})$'
     - matchPackageNames:
         - raspberrypi/linux
       versioning: 'regex:^stable_(?<major>\d{4})(?<minor>\d{2})(?<patch>\d{2})$'
+    - matchPackageNames:
+        - u-boot/u-boot
+      versioning: 'regex:^(?<major>\d+)\.(?<minor>\d+)(?<prerelease>-rc\d+)?$'
