@@ -1,3 +1,34 @@
+## [sbc-raspberrypi 0.1.9](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.9) (2026-02-24)
+
+Welcome to the v0.1.9 release of sbc-raspberrypi!
+
+
+
+Please try out the release binaries and report any issues at
+https://github.com/siderolabs/sbc-raspberrypi/issues.
+
+### Contributors
+
+* Birger Johan Nordølum
+* Licia Seiker
+* Mateusz Urbanek
+
+### Changes
+<details><summary>3 commits</summary>
+<p>
+
+* [`3f8fd68`](https://github.com/siderolabs/sbc-raspberrypi/commit/3f8fd6866a0295e26315a08931555f19c480c42c) chore: update kres's renovate package rules
+* [`e56ea57`](https://github.com/siderolabs/sbc-raspberrypi/commit/e56ea57af329f5a287ba17420a132af5f5f21c96) feat: add DTB build for Raspberry Pi 5
+* [`bb1434a`](https://github.com/siderolabs/sbc-raspberrypi/commit/bb1434abb62a413dcf73ba39b4bffad93b02512d) chore: update deps
+</p>
+</details>
+
+### Dependency Changes
+
+This release has no dependency changes
+
+Previous release can be found at [v0.1.8](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.8)
+
 ## [sbc-raspberrypi 0.1.8](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.8) (2026-01-26)
 
 Welcome to the v0.1.8 release of sbc-raspberrypi!

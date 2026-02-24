@@ -5,13 +5,7 @@ project_name = "sbc-raspberrypi"
 github_repo = "siderolabs/sbc-raspberrypi"
 match_deps = "^github.com/(siderolabs/[a-zA-Z0-9-]+)$"
 
-previous = "v0.1.7"
+previous = "v0.1.8"
 pre_release = false
 
 [notes]
-
-    [notes.rpi5]
-    title = "Raspberry Pi 5 Support"
-    content = """
-Added support for the Raspberry Pi 5, including necessary DTBs and kernel updates.
-"""
