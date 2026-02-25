@@ -1,4 +1,4 @@
-# syntax = ghcr.io/siderolabs/bldr:v0.5.5
+# syntax = ghcr.io/siderolabs/bldr:v0.5.6
 
 format: v1alpha2
 
@@ -14,7 +14,7 @@ vars:
   uboot_sha512: b1f988a497c77da60faf89ed33034e9ae58c4cd7f208e5ce451f1372e13540a66289bee4f08ca2f68f105d73f1ceae058b1f713db549edbcc885d9c66bdc4f8b
 
   # renovate: datasource=github-tags depName=raspberrypi/linux
-  raspberrypi_kernel_version: stable_20250428
+  raspberrypi_kernel_version: stable_20250916
   raspberrypi_kernel_sha256: c95906cfbc7808de5860c6d86537bea22e3501f600a5209de59a86cb436886f6
   raspberrypi_kernel_sha512: 0ed5d490c491e590b5980dccf6fcac0dd3c47accbfacd40d91507c12801cff34fa6a1c68991c8a6c57bb259c909121414766f35a0b11c4bd5d62c3e11d710839
 
