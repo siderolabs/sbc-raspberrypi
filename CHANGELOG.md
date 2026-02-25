@@ -1,3 +1,30 @@
+## [sbc-raspberrypi 0.2.0](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.2.0) (2026-02-25)
+
+Welcome to the v0.2.0 release of sbc-raspberrypi!
+
+
+
+Please try out the release binaries and report any issues at
+https://github.com/siderolabs/sbc-raspberrypi/issues.
+
+### Contributors
+
+* Noel Georgi
+
+### Changes
+<details><summary>1 commit</summary>
+<p>
+
+* [`0a02d01`](https://github.com/siderolabs/sbc-raspberrypi/commit/0a02d01d115c9daf18134ae34699d7364637963a) feat: bump tools and pkgs
+</p>
+</details>
+
+### Dependency Changes
+
+This release has no dependency changes
+
+Previous release can be found at [v0.1.9](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.9)
+
 ## [sbc-raspberrypi 0.1.9](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.1.9) (2026-02-24)
 
 Welcome to the v0.1.9 release of sbc-raspberrypi!
