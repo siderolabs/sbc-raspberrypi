@@ -1,0 +1,61 @@
+From fc595789308822aafe38c7659609263e6eb4ea69 Mon Sep 17 00:00:00 2001
+From: appkins <13772502+appkins@users.noreply.github.com>
+Date: Mon, 16 Mar 2026 13:02:43 -0500
+Subject: [PATCH 13/15] core: fix DMA range and PCI devfn handling
+
+Fix DMA range translation in of_addr.c and device utility
+functions in util.c for correct bus address handling on
+BCM2712.
+
+Link: https://github.com/sidero-community/u-boot
+Signed-off-by: appkins <13772502+appkins@users.noreply.github.com>
+---
+ drivers/core/of_addr.c | 8 ++++----
+ drivers/core/util.c    | 6 ++----
+ 2 files changed, 6 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/core/of_addr.c b/drivers/core/of_addr.c
+index 250dd175b55..823a4d70a6b 100644
+--- a/drivers/core/of_addr.c
++++ b/drivers/core/of_addr.c
+@@ -374,16 +374,16 @@ int of_get_dma_range(const struct device_node *dev, phys_addr_t *cpu,
+ 	}
+ 
+ 	/* Get the address sizes both for the bus and its parent */
+-	bus_node = of_match_bus((struct device_node*)dev);
+-	bus_node->count_cells(dev, &na, &ns);
++	na = of_simple_addr_cells(dev);
++	ns = of_simple_size_cells(dev);
+ 	if (!OF_CHECK_COUNTS(na, ns)) {
+ 		printf("Bad cell count for %s\n", of_node_full_name(dev));
+ 		ret = -EINVAL;
+ 		goto out_parent;
+ 	}
+ 
+-	bus_node = of_match_bus(parent);
+-	bus_node->count_cells(parent, &pna, &pns);
++	bus_node = of_match_bus((struct device_node *)dev);
++	bus_node->count_cells(dev, &pna, &pns);
+ 	if (!OF_CHECK_COUNTS(pna, pns)) {
+ 		printf("Bad cell count for %s\n", of_node_full_name(parent));
+ 		ret = -EINVAL;
+diff --git a/drivers/core/util.c b/drivers/core/util.c
+index fa893485a09..13f3ca15998 100644
+--- a/drivers/core/util.c
++++ b/drivers/core/util.c
+@@ -20,10 +20,8 @@ int pci_get_devfn(struct udevice *dev)
+ 	/* Extract the devfn from fdt_pci_addr */
+ 	ret = ofnode_read_pci_addr(dev_ofnode(dev), FDT_PCI_SPACE_CONFIG,
+ 				   "reg", &addr, NULL);
+-	if (ret) {
+-		if (ret != -ENOENT)
+-			return -EINVAL;
+-	}
++	if (ret)
++		return ret;
+ 
+ 	return addr.phys_hi & 0xff00;
+ }
+-- 
+2.53.0
+
