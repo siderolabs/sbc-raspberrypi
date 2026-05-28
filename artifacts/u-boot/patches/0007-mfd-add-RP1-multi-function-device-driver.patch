@@ -81,34 +81,29 @@ index 00000000000..e6ebf383a9a
 +#define SYSINFO_PLATFORM_OFFSET	0x00000004
 +
 +struct rp1_dev {
-+	phys_addr_t bar_start;
++	void __iomem *bar_start;
 +};
 +
-+static inline dma_addr_t rp1_io_to_phys(struct rp1_dev *rp1, unsigned int offset)
++static inline void __iomem *rp1_io_ptr(struct rp1_dev *rp1, unsigned int offset)
 +{
-+	return rp1->bar_start + offset;
++	return (u8 __iomem *)rp1->bar_start + offset;
 +}
 +
 +static u32 rp1_reg_read(struct rp1_dev *rp1, unsigned int base_addr, u32 offset)
 +{
-+	resource_size_t phys = rp1_io_to_phys(rp1, base_addr);
-+	void __iomem *regblock = ioremap(phys, 0x1000);
-+	u32 value = readl(regblock + offset);
-+
-+	iounmap(regblock);
-+	return value;
++	return readl(rp1_io_ptr(rp1, base_addr + offset));
 +}
 +
-+static int rp1_get_bar_region(struct udevice *dev, phys_addr_t *bar_start)
++static int rp1_get_bar_region(struct udevice *dev, void __iomem **bar_start)
 +{
-+	void *bar;
++	void __iomem *bar;
 +
 +	bar = dm_pci_map_bar(dev, PCI_BASE_ADDRESS_1, 0, 0,
 +			     PCI_REGION_TYPE, PCI_REGION_MEM);
 +	if (!bar)
 +		return -ENOMEM;
 +
-+	*bar_start = (phys_addr_t)bar;
++	*bar_start = bar;
 +	return 0;
 +}
 +
@@ -214,10 +209,10 @@ index 00000000000..e6ebf383a9a
 +static int rp1_pcie_read_config(const struct udevice *bus, pci_dev_t bdf,
 +				uint offset, ulong *valuep, enum pci_size_t size)
 +{
-+	/*
++/*
 +	 * Leaving this call because pci subsystem calls for read_config
 +	 * and produces error then this callback is not set.
-+	 * Just return 0 here.s
++	 * Just return 0 here.
 +	 */
 +	*valuep = 0;
 +	return 0;
@@ -246,7 +241,7 @@ index 00000000000..80bbfd61b27
 @@ -0,0 +1,235 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
-+ * This header provides constants for the PY MFD.
++ * This header provides constants for the RP1 MFD.
 + */
 +
 +#ifndef _RP1_H

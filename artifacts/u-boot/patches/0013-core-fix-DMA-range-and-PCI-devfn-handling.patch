@@ -34,8 +34,8 @@ index 250dd175b55..823a4d70a6b 100644
  
 -	bus_node = of_match_bus(parent);
 -	bus_node->count_cells(parent, &pna, &pns);
-+	bus_node = of_match_bus((struct device_node *)dev);
-+	bus_node->count_cells(dev, &pna, &pns);
++	bus_node = of_match_bus(parent);
++	bus_node->count_cells(parent, &pna, &pns);
  	if (!OF_CHECK_COUNTS(pna, pns)) {
  		printf("Bad cell count for %s\n", of_node_full_name(parent));
  		ret = -EINVAL;

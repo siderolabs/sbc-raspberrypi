@@ -24,12 +24,13 @@ index 60c5c54688e..57ca4194828 100644
  	  This driver supports the GPIO banks on Renesas R-Car SoCs.
  
 +config RP1_GPIO
-+	bool "Raspberry PR1 GPIO driver"
++	bool "Raspberry RP1 GPIO driver"
 +	depends on DM_GPIO && ARCH_BCM283X
 +	help
++	help
 +	  This driver supports the GPIO banks on Raspberry RP1 chip.
-+	  Raspberry PI5 has an external chip RP1 installed, which
-+	  provides it's own GPIO controller.
++	  Raspberry Pi 5 has an external chip RP1 installed, which
++	  provides its own GPIO controller.
 +
  config RZA1_GPIO
  	bool "Renesas RZ/A1 GPIO driver"
