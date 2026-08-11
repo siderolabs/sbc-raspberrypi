@@ -1,0 +1,53 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Marc Plano-Lesay <kernald@enoent.fr>
+Date: Thu, 31 Jul 2026 12:00:00 +1000
+Subject: [PATCH] dts: bcm2712-rpi-cm5: drop SD UHS modes not backed by a
+ switchable vqmmc
+
+The CM5 dtsi describes sd_io_1v8_reg as a fixed, always-on 1.8V
+regulator (correct for the eMMC on non-Lite modules), unlike the Pi 5
+Model B where it is a regulator-gpio switching 3.3V<->1.8V. The CM5
+Lite variants reuse this dtsi, so sdio1 advertises sd-uhs-* modes with
+no switchable vqmmc behind them: the CMD11 voltage switch is a no-op
+against the fixed regulator and SD initialization fails:
+
+  mmc0: cannot verify signal voltage switch
+  mmc0: error -110 whilst initialising SD card
+  mmc0: Timeout waiting for hardware cmd interrupt.
+
+With broken-cd polling this repeats forever. On SD-booted CM5 Lite
+systems the boot medium is never enumerated, leaving the node without a
+system disk.
+
+Drop the sd-uhs-* properties and mask SDR50/SDR104/DDR50 out of the
+capability register; both are needed because mmc_of_parse() and
+sdhci_setup_host() enable UHS independently, and sdhci-brcmstb never
+calls sdhci_get_property() so no-1-8-v cannot be used. eMMC is
+unaffected (HS200 comes from mmc-hs200-1_8v).
+
+Validated on a CM5 Lite 16GB on a Xerxes Pi carrier board (kernel
+6.18.39): the SD card enumerates and negotiates High Speed 3.3V/50MHz,
+matching what the Raspberry Pi vendor kernel negotiates on the same
+hardware.
+
+Signed-off-by: Marc Plano-Lesay <kernald@enoent.fr>
+---
+ arch/arm64/boot/dts/broadcom/bcm2712-rpi-cm5.dtsi | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/broadcom/bcm2712-rpi-cm5.dtsi b/arch/arm64/boot/dts/broadcom/bcm2712-rpi-cm5.dtsi
+--- a/arch/arm64/boot/dts/broadcom/bcm2712-rpi-cm5.dtsi
++++ b/arch/arm64/boot/dts/broadcom/bcm2712-rpi-cm5.dtsi
+@@ -290,9 +290,7 @@ &sdio1 {
+ 	vqmmc-supply = <&sd_io_1v8_reg>;
+ 	vmmc-supply = <&sd_vcc_reg>;
+ 	bus-width = <8>;
+-	sd-uhs-sdr50;
+-	sd-uhs-ddr50;
+-	sd-uhs-sdr104;
++	sdhci-caps-mask = <0x7 0x0>;
+ 	mmc-hs200-1_8v;
+ 	broken-cd;
+ 	status = "okay";
+--
+2.43.0
