@@ -1,0 +1,484 @@
+From 976e25fe9a5a41aafe2c5a46418e64d4e38eadbc Mon Sep 17 00:00:00 2001
+From: appkins <13772502+appkins@users.noreply.github.com>
+Date: Mon, 16 Mar 2026 13:02:42 -0500
+Subject: [PATCH 07/15] mfd: add RP1 multi-function device driver
+
+Add MFD driver for the RP1 chip, a PCIe-attached device on
+Raspberry Pi 5 that provides GPIO, Ethernet, USB, and other
+peripherals through its child devices.
+
+Link: https://github.com/sidero-community/u-boot
+Signed-off-by: appkins <13772502+appkins@users.noreply.github.com>
+---
+ drivers/mfd/Kconfig           |  10 ++
+ drivers/mfd/Makefile          |   1 +
+ drivers/mfd/rp1.c             | 188 +++++++++++++++++++++++++++
+ include/dt-bindings/mfd/rp1.h | 235 ++++++++++++++++++++++++++++++++++
+ 4 files changed, 434 insertions(+)
+ create mode 100644 drivers/mfd/rp1.c
+ create mode 100644 include/dt-bindings/mfd/rp1.h
+
+diff --git a/drivers/mfd/Kconfig b/drivers/mfd/Kconfig
+index ae53b02f27c..a9de45797fe 100644
+--- a/drivers/mfd/Kconfig
++++ b/drivers/mfd/Kconfig
+@@ -2,3 +2,13 @@ config MFD_ATMEL_SMC
+        bool "Atmel Static Memory Controller driver"
+        help
+ 	Say yes here to support Atmel Static Memory Controller driver.
++
++config MFD_RP1
++	tristate "RP1 MFD driver"
++	depends on PCI
++	help
++	  Support for the RP1 peripheral chip.
++
++	  This driver provides support for the Raspberry Pi RP1 peripheral chip.
++	  It is responsible for enabling the Device Tree node once the PCIe endpoint
++	  has been configureds.
+diff --git a/drivers/mfd/Makefile b/drivers/mfd/Makefile
+index 4454815a981..c81ee5789b5 100644
+--- a/drivers/mfd/Makefile
++++ b/drivers/mfd/Makefile
+@@ -1 +1,2 @@
+ obj-$(CONFIG_MFD_ATMEL_SMC) += atmel-smc.o
++obj-$(CONFIG_MFD_RP1) += rp1.o
+diff --git a/drivers/mfd/rp1.c b/drivers/mfd/rp1.c
+new file mode 100644
+index 00000000000..e6ebf383a9a
+--- /dev/null
++++ b/drivers/mfd/rp1.c
+@@ -0,0 +1,188 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Copyright (c) 2024 EPAM Systems
++ *
++ * Derived from linux rp1 driver
++ * Copyright (c) 2018-22 Raspberry Pi Ltd.
++ */
++
++#include <asm/io.h>
++#include <dm.h>
++#include <dm/device.h>
++#include <dm/device_compat.h>
++#include <dm/of_access.h>
++#include <dt-bindings/mfd/rp1.h>
++#include <linux/io.h>
++#include <linux/types.h>
++#include <pci.h>
++
++#define RP1_B0_CHIP_ID 0x10001927
++#define RP1_C0_CHIP_ID 0x20001927
++
++#define RP1_PLATFORM_ASIC BIT(1)
++#define RP1_PLATFORM_FPGA BIT(0)
++
++#define RP1_DRIVER_NAME "rp1"
++
++#define PCI_DEVICE_REV_RP1_C0 2
++
++#define SYSINFO_CHIP_ID_OFFSET	0x00000000
++#define SYSINFO_PLATFORM_OFFSET	0x00000004
++
++struct rp1_dev {
++	phys_addr_t bar_start;
++};
++
++static inline dma_addr_t rp1_io_to_phys(struct rp1_dev *rp1, unsigned int offset)
++{
++	return rp1->bar_start + offset;
++}
++
++static u32 rp1_reg_read(struct rp1_dev *rp1, unsigned int base_addr, u32 offset)
++{
++	resource_size_t phys = rp1_io_to_phys(rp1, base_addr);
++	void __iomem *regblock = ioremap(phys, 0x1000);
++	u32 value = readl(regblock + offset);
++
++	iounmap(regblock);
++	return value;
++}
++
++static int rp1_get_bar_region(struct udevice *dev, phys_addr_t *bar_start)
++{
++	void *bar;
++
++	bar = dm_pci_map_bar(dev, PCI_BASE_ADDRESS_1, 0, 0,
++			     PCI_REGION_TYPE, PCI_REGION_MEM);
++	if (!bar)
++		return -ENOMEM;
++
++	*bar_start = (phys_addr_t)bar;
++	return 0;
++}
++
++static int rp1_probe(struct udevice *dev)
++{
++	int ret;
++	struct rp1_dev *rp1 = dev_get_priv(dev);
++	u32 chip_id, platform;
++	u32 bar0_addr, bar1_addr;
++
++	/* Turn on bus-mastering */
++	dm_pci_clrset_config16(dev, PCI_COMMAND, 0, PCI_COMMAND_MASTER | PCI_COMMAND_MEMORY);
++
++	/*
++	 * Swap BAR0 and BAR1 addresses to match device tree expectations.
++	 *
++	 * The rp1_nexus DT node maps RP1 child device addresses (ethernet,
++	 * GPIO, clocks, USB) through BAR1 starting at PCI bus address 0.
++	 * This matches the Linux PCI subsystem's generic, size-sorted BAR
++	 * allocation which places the larger BAR1 at the lowest address.
++	 * The Linux RP1 driver itself has no BAR ordering logic — it simply
++	 * maps BAR1 by index via pcim_iomap(pdev, 1, 0).
++	 *
++	 * U-Boot's PCI auto-config (dm_pciauto_setup_device in pci_auto.c)
++	 * allocates BARs sequentially by index: BAR0 first at address 0,
++	 * then BAR1 at the next naturally-aligned address. This places BAR1
++	 * at a non-zero PCI bus address, breaking of_translate_address() for
++	 * all RP1 child devices since the DT ranges assume BAR1 starts at 0.
++	 *
++	 * Fix: swap the auto-assigned addresses so BAR1 gets address 0
++	 * (matching the DT) and BAR0 moves to BAR1's old address.
++	 * Only BAR1 is used by RP1 drivers; BAR0 is never accessed.
++	 */
++	dm_pci_read_config32(dev, PCI_BASE_ADDRESS_0, &bar0_addr);
++	dm_pci_read_config32(dev, PCI_BASE_ADDRESS_1, &bar1_addr);
++	bar0_addr &= PCI_BASE_ADDRESS_MEM_MASK;
++	bar1_addr &= PCI_BASE_ADDRESS_MEM_MASK;
++	dm_pci_write_config32(dev, PCI_BASE_ADDRESS_1, bar0_addr);
++	dm_pci_write_config32(dev, PCI_BASE_ADDRESS_0, bar1_addr);
++
++	ret = rp1_get_bar_region(dev, &rp1->bar_start);
++	if (ret)
++		return ret;
++
++	/* Get chip id */
++	chip_id = rp1_reg_read(rp1, RP1_SYSINFO_BASE, SYSINFO_CHIP_ID_OFFSET);
++	platform = rp1_reg_read(rp1, RP1_SYSINFO_BASE, SYSINFO_PLATFORM_OFFSET);
++	dev_dbg(dev, "chip_id 0x%x%s\n", chip_id,
++		(platform & RP1_PLATFORM_FPGA) ? " FPGA" : "");
++
++	if (chip_id != RP1_C0_CHIP_ID) {
++		dev_err(dev, "wrong chip id (%x)\n", chip_id);
++		return -EINVAL;
++	}
++
++	return 0;
++}
++
++static int rp1_bind(struct udevice *dev)
++{
++	device_set_name(dev, RP1_DRIVER_NAME);
++
++	/*
++	 * Bind child devices from the device tree.
++	 *
++	 * The rp1_nexus DT node contains a pci_ep_bus (simple-bus) child
++	 * which in turn holds RP1 peripheral devices: Ethernet (MACB),
++	 * GPIO, clocks, and USB controllers. Without this call, the PCI
++	 * subsystem binds the RP1 PCI device but never discovers the DT
++	 * child nodes, resulting in "No ethernet found" at boot.
++	 *
++	 * The UCLASS_PCI_GENERIC uclass has no post_bind hook to scan
++	 * children automatically (unlike UCLASS_PCI which uses
++	 * dm_scan_fdt_dev as its post_bind). We must call it explicitly.
++	 */
++	return dm_scan_fdt_dev(dev);
++}
++
++static const struct pci_device_id dev_id_table[] = {
++	{ PCI_DEVICE(PCI_VENDOR_ID_RPI, PCI_DEVICE_ID_RP1_C0), },
++	{ 0, }
++};
++
++/*
++ * No of_match table: the RP1 device must NOT be bound eagerly during
++ * DT scanning of the PCIe controller's children.
++ *
++ * The rp1_nexus DT node sits directly under pcie@1000120000, but in
++ * the actual PCI topology RP1 is behind a bridge on bus 1.  If
++ * lists_bind_fdt() matched rp1_nexus during the DT scan (bus 0),
++ * pci_uclass_child_post_bind() would assign it devfn=0 (via
++ * uninitialized data — no reg property), causing pci_bind_bus_devices()
++ * to confuse it with the root port bridge on the same bus/devfn.
++ *
++ * Instead, PCI enumeration discovers RP1 on bus 1 by hardware scan
++ * and matches it through the U_BOOT_PCI_DEVICE table below.  The
++ * pci_find_and_bind_driver() fallback search associates the rp1_nexus
++ * ofnode (from the controller's DT children) with this PCI-discovered
++ * device, so rp1_bind() can then scan the DT subtree for Ethernet,
++ * GPIO, clocks, and USB children.
++ */
++
++static int rp1_pcie_read_config(const struct udevice *bus, pci_dev_t bdf,
++				uint offset, ulong *valuep, enum pci_size_t size)
++{
++	/*
++	 * Leaving this call because pci subsystem calls for read_config
++	 * and produces error then this callback is not set.
++	 * Just return 0 here.s
++	 */
++	*valuep = 0;
++	return 0;
++}
++
++static const struct dm_pci_ops rp1_pcie_ops = {
++	.read_config	= rp1_pcie_read_config,
++};
++
++U_BOOT_DRIVER(rp1_driver) = {
++	.name			 = RP1_DRIVER_NAME,
++	.id			   = UCLASS_PCI_GENERIC,
++	.probe		 = rp1_probe,
++	.bind			 = rp1_bind,
++	.priv_auto = sizeof(struct rp1_dev),
++	.ops			 = &rp1_pcie_ops,
++};
++
++U_BOOT_PCI_DEVICE(rp1_driver, dev_id_table);
+\ No newline at end of file
+diff --git a/include/dt-bindings/mfd/rp1.h b/include/dt-bindings/mfd/rp1.h
+new file mode 100644
+index 00000000000..80bbfd61b27
+--- /dev/null
++++ b/include/dt-bindings/mfd/rp1.h
+@@ -0,0 +1,235 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * This header provides constants for the PY MFD.
++ */
++
++#ifndef _RP1_H
++#define _RP1_H
++
++/* Address map */
++#define RP1_SYSINFO_BASE 0x000000
++#define RP1_TBMAN_BASE 0x004000
++#define RP1_SYSCFG_BASE 0x008000
++#define RP1_OTP_BASE 0x00c000
++#define RP1_POWER_BASE 0x010000
++#define RP1_RESETS_BASE 0x014000
++#define RP1_CLOCKS_BANK_DEFAULT_BASE 0x018000
++#define RP1_CLOCKS_BANK_VIDEO_BASE 0x01c000
++#define RP1_PLL_SYS_BASE 0x020000
++#define RP1_PLL_AUDIO_BASE 0x024000
++#define RP1_PLL_VIDEO_BASE 0x028000
++#define RP1_UART0_BASE 0x030000
++#define RP1_UART1_BASE 0x034000
++#define RP1_UART2_BASE 0x038000
++#define RP1_UART3_BASE 0x03c000
++#define RP1_UART4_BASE 0x040000
++#define RP1_UART5_BASE 0x044000
++#define RP1_SPI8_BASE 0x04c000
++#define RP1_SPI0_BASE 0x050000
++#define RP1_SPI1_BASE 0x054000
++#define RP1_SPI2_BASE 0x058000
++#define RP1_SPI3_BASE 0x05c000
++#define RP1_SPI4_BASE 0x060000
++#define RP1_SPI5_BASE 0x064000
++#define RP1_SPI6_BASE 0x068000
++#define RP1_SPI7_BASE 0x06c000
++#define RP1_I2C0_BASE 0x070000
++#define RP1_I2C1_BASE 0x074000
++#define RP1_I2C2_BASE 0x078000
++#define RP1_I2C3_BASE 0x07c000
++#define RP1_I2C4_BASE 0x080000
++#define RP1_I2C5_BASE 0x084000
++#define RP1_I2C6_BASE 0x088000
++#define RP1_AUDIO_IN_BASE 0x090000
++#define RP1_AUDIO_OUT_BASE 0x094000
++#define RP1_PWM0_BASE 0x098000
++#define RP1_PWM1_BASE 0x09c000
++#define RP1_I2S0_BASE 0x0a0000
++#define RP1_I2S1_BASE 0x0a4000
++#define RP1_I2S2_BASE 0x0a8000
++#define RP1_TIMER_BASE 0x0ac000
++#define RP1_SDIO0_APBS_BASE 0x0b0000
++#define RP1_SDIO1_APBS_BASE 0x0b4000
++#define RP1_BUSFABRIC_MONITOR_BASE 0x0c0000
++#define RP1_BUSFABRIC_AXISHIM_BASE 0x0c4000
++#define RP1_ADC_BASE 0x0c8000
++#define RP1_IO_BANK0_BASE 0x0d0000
++#define RP1_IO_BANK1_BASE 0x0d4000
++#define RP1_IO_BANK2_BASE 0x0d8000
++#define RP1_SYS_RIO0_BASE 0x0e0000
++#define RP1_SYS_RIO1_BASE 0x0e4000
++#define RP1_SYS_RIO2_BASE 0x0e8000
++#define RP1_PADS_BANK0_BASE 0x0f0000
++#define RP1_PADS_BANK1_BASE 0x0f4000
++#define RP1_PADS_BANK2_BASE 0x0f8000
++#define RP1_PADS_ETH_BASE 0x0fc000
++#define RP1_ETH_IP_BASE 0x100000
++#define RP1_ETH_CFG_BASE 0x104000
++#define RP1_PCIE_APBS_BASE 0x108000
++#define RP1_MIPI0_CSIDMA_BASE 0x110000
++#define RP1_MIPI0_CSIHOST_BASE 0x114000
++#define RP1_MIPI0_DSIDMA_BASE 0x118000
++#define RP1_MIPI0_DSIHOST_BASE 0x11c000
++#define RP1_MIPI0_MIPICFG_BASE 0x120000
++#define RP1_MIPI0_ISP_BASE 0x124000
++#define RP1_MIPI1_CSIDMA_BASE 0x128000
++#define RP1_MIPI1_CSIHOST_BASE 0x12c000
++#define RP1_MIPI1_DSIDMA_BASE 0x130000
++#define RP1_MIPI1_DSIHOST_BASE 0x134000
++#define RP1_MIPI1_MIPICFG_BASE 0x138000
++#define RP1_MIPI1_ISP_BASE 0x13c000
++#define RP1_VIDEO_OUT_CFG_BASE 0x140000
++#define RP1_VIDEO_OUT_VEC_BASE 0x144000
++#define RP1_VIDEO_OUT_DPI_BASE 0x148000
++#define RP1_XOSC_BASE 0x150000
++#define RP1_WATCHDOG_BASE 0x154000
++#define RP1_DMA_TICK_BASE 0x158000
++#define RP1_SDIO_CLOCKS_BASE 0x15c000
++#define RP1_USBHOST0_APBS_BASE 0x160000
++#define RP1_USBHOST1_APBS_BASE 0x164000
++#define RP1_ROSC0_BASE 0x168000
++#define RP1_ROSC1_BASE 0x16c000
++#define RP1_VBUSCTRL_BASE 0x170000
++#define RP1_TICKS_BASE 0x174000
++#define RP1_PIO_APBS_BASE 0x178000
++#define RP1_SDIO0_AHBLS_BASE 0x180000
++#define RP1_SDIO1_AHBLS_BASE 0x184000
++#define RP1_DMA_BASE 0x188000
++#define RP1_RAM_BASE 0x1c0000
++#define RP1_RAM_SIZE 0x020000
++#define RP1_USBHOST0_AXIS_BASE 0x200000
++#define RP1_USBHOST1_AXIS_BASE 0x300000
++#define RP1_EXAC_BASE 0x400000
++
++/* Interrupts */
++
++#define RP1_INT_IO_BANK0 0
++#define RP1_INT_IO_BANK1 1
++#define RP1_INT_IO_BANK2 2
++#define RP1_INT_AUDIO_IN 3
++#define RP1_INT_AUDIO_OUT 4
++#define RP1_INT_PWM0 5
++#define RP1_INT_ETH 6
++#define RP1_INT_I2C0 7
++#define RP1_INT_I2C1 8
++#define RP1_INT_I2C2 9
++#define RP1_INT_I2C3 10
++#define RP1_INT_I2C4 11
++#define RP1_INT_I2C5 12
++#define RP1_INT_I2C6 13
++#define RP1_INT_I2S0 14
++#define RP1_INT_I2S1 15
++#define RP1_INT_I2S2 16
++#define RP1_INT_SDIO0 17
++#define RP1_INT_SDIO1 18
++#define RP1_INT_SPI0 19
++#define RP1_INT_SPI1 20
++#define RP1_INT_SPI2 21
++#define RP1_INT_SPI3 22
++#define RP1_INT_SPI4 23
++#define RP1_INT_SPI5 24
++#define RP1_INT_UART0 25
++#define RP1_INT_TIMER_0 26
++#define RP1_INT_TIMER_1 27
++#define RP1_INT_TIMER_2 28
++#define RP1_INT_TIMER_3 29
++#define RP1_INT_USBHOST0 30
++#define RP1_INT_USBHOST0_0 31
++#define RP1_INT_USBHOST0_1 32
++#define RP1_INT_USBHOST0_2 33
++#define RP1_INT_USBHOST0_3 34
++#define RP1_INT_USBHOST1 35
++#define RP1_INT_USBHOST1_0 36
++#define RP1_INT_USBHOST1_1 37
++#define RP1_INT_USBHOST1_2 38
++#define RP1_INT_USBHOST1_3 39
++#define RP1_INT_DMA 40
++#define RP1_INT_PWM1 41
++#define RP1_INT_UART1 42
++#define RP1_INT_UART2 43
++#define RP1_INT_UART3 44
++#define RP1_INT_UART4 45
++#define RP1_INT_UART5 46
++#define RP1_INT_MIPI0 47
++#define RP1_INT_MIPI1 48
++#define RP1_INT_VIDEO_OUT 49
++#define RP1_INT_PIO_0 50
++#define RP1_INT_PIO_1 51
++#define RP1_INT_ADC_FIFO 52
++#define RP1_INT_PCIE_OUT 53
++#define RP1_INT_SPI6 54
++#define RP1_INT_SPI7 55
++#define RP1_INT_SPI8 56
++#define RP1_INT_SYSCFG 58
++#define RP1_INT_CLOCKS_DEFAULT 59
++#define RP1_INT_VBUSCTRL 60
++#define RP1_INT_PROC_MISC 57
++#define RP1_INT_END 61
++
++/* DMA peripherals (for pacing) */
++#define RP1_DMA_I2C0_RX 0x0
++#define RP1_DMA_I2C0_TX 0x1
++#define RP1_DMA_I2C1_RX 0x2
++#define RP1_DMA_I2C1_TX 0x3
++#define RP1_DMA_I2C2_RX 0x4
++#define RP1_DMA_I2C2_TX 0x5
++#define RP1_DMA_I2C3_RX 0x6
++#define RP1_DMA_I2C3_TX 0x7
++#define RP1_DMA_I2C4_RX 0x8
++#define RP1_DMA_I2C4_TX 0x9
++#define RP1_DMA_I2C5_RX 0xa
++#define RP1_DMA_I2C5_TX 0xb
++#define RP1_DMA_SPI0_RX 0xc
++#define RP1_DMA_SPI0_TX 0xd
++#define RP1_DMA_SPI1_RX 0xe
++#define RP1_DMA_SPI1_TX 0xf
++#define RP1_DMA_SPI2_RX 0x10
++#define RP1_DMA_SPI2_TX 0x11
++#define RP1_DMA_SPI3_RX 0x12
++#define RP1_DMA_SPI3_TX 0x13
++#define RP1_DMA_SPI4_RX 0x14
++#define RP1_DMA_SPI4_TX 0x15
++#define RP1_DMA_SPI5_RX 0x16
++#define RP1_DMA_SPI5_TX 0x17
++#define RP1_DMA_PWM0 0x18
++#define RP1_DMA_UART0_RX 0x19
++#define RP1_DMA_UART0_TX 0x1a
++#define RP1_DMA_AUDIO_IN_CH0 0x1b
++#define RP1_DMA_AUDIO_IN_CH1 0x1c
++#define RP1_DMA_AUDIO_OUT 0x1d
++#define RP1_DMA_PWM1 0x1e
++#define RP1_DMA_I2S0_RX 0x1f
++#define RP1_DMA_I2S0_TX 0x20
++#define RP1_DMA_I2S1_RX 0x21
++#define RP1_DMA_I2S1_TX 0x22
++#define RP1_DMA_I2S2_RX 0x23
++#define RP1_DMA_I2S2_TX 0x24
++#define RP1_DMA_UART1_RX 0x25
++#define RP1_DMA_UART1_TX 0x26
++#define RP1_DMA_UART2_RX 0x27
++#define RP1_DMA_UART2_TX 0x28
++#define RP1_DMA_UART3_RX 0x29
++#define RP1_DMA_UART3_TX 0x2a
++#define RP1_DMA_UART4_RX 0x2b
++#define RP1_DMA_UART4_TX 0x2c
++#define RP1_DMA_UART5_RX 0x2d
++#define RP1_DMA_UART5_TX 0x2e
++#define RP1_DMA_ADC 0x2f
++#define RP1_DMA_DMA_TICK_TICK0 0x30
++#define RP1_DMA_DMA_TICK_TICK1 0x31
++#define RP1_DMA_SPI6_RX 0x32
++#define RP1_DMA_SPI6_TX 0x33
++#define RP1_DMA_SPI7_RX 0x34
++#define RP1_DMA_SPI7_TX 0x35
++#define RP1_DMA_SPI8_RX 0x36
++#define RP1_DMA_SPI8_TX 0x37
++#define RP1_DMA_PIO_CH0_TX 0x38
++#define RP1_DMA_PIO_CH0_RX 0x39
++#define RP1_DMA_PIO_CH1_TX 0x3a
++#define RP1_DMA_PIO_CH1_RX 0x3b
++#define RP1_DMA_PIO_CH2_TX 0x3c
++#define RP1_DMA_PIO_CH2_RX 0x3d
++#define RP1_DMA_PIO_CH3_TX 0x3e
++#define RP1_DMA_PIO_CH3_RX 0x3f
++
++#endif
+-- 
+2.53.0
+

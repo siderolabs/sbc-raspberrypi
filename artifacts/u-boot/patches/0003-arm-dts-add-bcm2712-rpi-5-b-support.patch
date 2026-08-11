@@ -1,0 +1,206 @@
+From f3ed29e9c447d1fcb3382ef6d53cb417b49bbfd7 Mon Sep 17 00:00:00 2001
+From: appkins <13772502+appkins@users.noreply.github.com>
+Date: Mon, 16 Mar 2026 13:02:41 -0500
+Subject: [PATCH 03/15] arm: dts: add bcm2712-rpi-5-b support
+
+Add device tree sources for BCM2712 Raspberry Pi 5 Model B
+including upstream DTS fixups and U-Boot supplemental dtsi.
+
+Link: https://github.com/sidero-community/u-boot
+Signed-off-by: appkins <13772502+appkins@users.noreply.github.com>
+---
+ arch/arm/dts/Makefile                         |  4 +-
+ arch/arm/dts/bcm2712-rpi-5-b-u-boot.dtsi      | 85 +++++++++++++++++++
+ arch/arm/dts/bcm283x-u-boot.dtsi              | 21 +++++
+ dts/upstream/src/arm64/broadcom/bcm2712.dtsi  |  4 +-
+ .../src/arm64/broadcom/rp1-common.dtsi        |  2 +-
+ .../src/arm64/broadcom/rp1-nexus.dtsi         |  4 +-
+ 6 files changed, 114 insertions(+), 6 deletions(-)
+ create mode 100644 arch/arm/dts/bcm2712-rpi-5-b-u-boot.dtsi
+
+diff --git a/arch/arm/dts/Makefile b/arch/arm/dts/Makefile
+index 82ad3035308..5d97c94cbec 100644
+--- a/arch/arm/dts/Makefile
++++ b/arch/arm/dts/Makefile
+@@ -1025,7 +1025,9 @@ dtb-$(CONFIG_ARCH_BCM283X) += \
+ 	bcm2837-rpi-3-b.dtb \
+ 	bcm2837-rpi-3-b-plus.dtb \
+ 	bcm2837-rpi-cm3-io3.dtb \
+-	bcm2711-rpi-4-b.dtb
++	bcm2711-rpi-4-b.dtb \
++	bcm2712-rpi-5-b.dtb \
++	bcm2712d0-rpi-5-b.dtb
+ 
+ dtb-$(CONFIG_TARGET_BCMNS) += ns-board.dtb
+ 
+diff --git a/arch/arm/dts/bcm2712-rpi-5-b-u-boot.dtsi b/arch/arm/dts/bcm2712-rpi-5-b-u-boot.dtsi
+new file mode 100644
+index 00000000000..33d56530c2f
+--- /dev/null
++++ b/arch/arm/dts/bcm2712-rpi-5-b-u-boot.dtsi
+@@ -0,0 +1,85 @@
++/* * PCIe DMA Override
++ * U-Boot's dm_pci_bus_to_phys() cannot parse the upstream dma-ranges which use
++ * 0x02000000/0x03000000 (non-prefetchable) type flags with multi-entry mappings.
++ * Replace with a single 64-bit prefetchable pass-through (0x43000000) that maps
++ * PCI address 0x0 → CPU physical 0x0 for 16 GiB.  This covers all system RAM.
++ * The upstream entries are preserved in bcm2712.dtsi for Linux compatibility;
++ * this override only affects the U-Boot-compiled DTB.
++ */
++&pcie1 {
++    dma-ranges = <0x43000000 0x0 0x00000000  0x0 0x00000000  0x4 0x00000000>;
++};
++
++&pcie2 {
++    dma-ranges = <0x43000000 0x0 0x00000000  0x0 0x00000000  0x4 0x00000000>;
++};
++
++/* * 2. RP1 Southbridge Node 
++ * This bridges the internal RP1 bus to the external PCIe link.
++ */
++&rp1_nexus {
++    bootph-all;
++    
++    /* * Pass-through DMA Ranges.
++     * This tells U-Boot: "Addresses on the RP1 internal bus map 1:1 to the PCIe bus."
++     */
++    dma-ranges = <0x43000000 0x0 0x00000000  0x43000000 0x0 0x00000000  0x4 0x00000000>;
++};
++
++/* * 3. RP1 Peripheral Aliases 
++ * Helps U-Boot find the Ethernet/USB without scanning the whole bus immediately.
++ */
++/ {
++    aliases {
++        ethernet0 = &rp1_eth;
++    };
++};
++
++/* Enable specific peripherals behind RP1 */
++&rp1_eth {
++    status = "okay";
++};
++
++&rp1_usb0 {
++    status = "okay";
++};
++
++&rp1_usb1 {
++    status = "okay";
++};
++
++/ {
++    smbios {
++        compatible = "u-boot,sysinfo-smbios";
++
++        smbios {
++            /* Type 1 — System Information
++             * serial is intentionally empty; overridden at runtime by the
++             * serial# U-Boot environment variable, which must contain the
++             * full Talos NoCloud datasource string:
++             *   ds=nocloud-net;s=http://<server>/configs/;h=<hostname>
++             * Set via: fw_setenv -c /boot/fw_env.config serial# "ds=nocloud-net;..."
++             */
++            system {
++                manufacturer = "Raspberry Pi";
++                product = "5 Model B";
++                version = "";
++                serial = "";
++                sku = "";
++                family = "Raspberry Pi";
++            };
++
++            /* Type 2 — Baseboard Information */
++            baseboard {
++                manufacturer = "Raspberry Pi";
++                product = "5 Model B";
++                asset-tag = "";
++            };
++
++            /* Type 3 — Chassis Information */
++            chassis {
++                manufacturer = "Raspberry Pi";
++            };
++        };
++    };
++};
+\ No newline at end of file
+diff --git a/arch/arm/dts/bcm283x-u-boot.dtsi b/arch/arm/dts/bcm283x-u-boot.dtsi
+index ec0f93dd850..30260fa5269 100644
+--- a/arch/arm/dts/bcm283x-u-boot.dtsi
++++ b/arch/arm/dts/bcm283x-u-boot.dtsi
+@@ -27,3 +27,24 @@
+ &uart1_gpio14 {
+ 	bootph-all;
+ };
++
++/ {
++	smbios {
++		compatible = "u-boot,sysinfo-smbios";
++
++		smbios {
++			system {
++				manufacturer = "Raspberry Pi";
++				family = "Raspberry Pi";
++			};
++
++			baseboard {
++				manufacturer = "Raspberry Pi";
++			};
++
++			chassis {
++				manufacturer = "Raspberry Pi";
++			};
++		};
++	};
++};
+diff --git a/dts/upstream/src/arm64/broadcom/bcm2712.dtsi b/dts/upstream/src/arm64/broadcom/bcm2712.dtsi
+index 205b87f557d..d5e136f5482 100644
+--- a/dts/upstream/src/arm64/broadcom/bcm2712.dtsi
++++ b/dts/upstream/src/arm64/broadcom/bcm2712.dtsi
+@@ -604,8 +604,8 @@
+ 				<0x43000000 0x04 0x00000000 0x1c 0x00000000 0x03 0x00000000>;
+ 
+ 			dma-ranges =
+-				/* 4MiB, 32-bit, non-prefetchable at PCIe 00_0000_0000 */
+-				<0x02000000 0x00 0x00000000 0x1f 0x00000000 0x00 0x00400000>,
++				/* ~4MiB, 32-bit, non-prefetchable at PCIe 00_0000_0000 */
++				<0x02000000 0x00 0x00000000 0x1f 0x00000000 0x00 0x00410000>,
+ 				/* 64GiB, 64-bit, prefetchable at PCIe 10_0000_0000 */
+ 				<0x43000000 0x10 0x00000000 0x00 0x00000000 0x10 0x00000000>,
+ 				/* 4KiB, 64-bit, non-prefetchable at PCIe ff_ffff_f000 MIP0 */
+diff --git a/dts/upstream/src/arm64/broadcom/rp1-common.dtsi b/dts/upstream/src/arm64/broadcom/rp1-common.dtsi
+index 5a815c37979..ccf9bb30011 100644
+--- a/dts/upstream/src/arm64/broadcom/rp1-common.dtsi
++++ b/dts/upstream/src/arm64/broadcom/rp1-common.dtsi
+@@ -6,7 +6,7 @@
+ 
+ pci_ep_bus: pci-ep-bus@1 {
+ 	compatible = "simple-bus";
+-	ranges = <0x00 0x40000000  0x01 0x00 0x00000000  0x00 0x00400000>;
++	ranges = <0x00 0x40000000  0x01 0x00 0x00000000  0x00 0x00410000>;
+ 	dma-ranges = <0x10 0x00000000  0x43000000 0x10 0x00000000  0x10 0x00000000>;
+ 	#address-cells = <2>;
+ 	#size-cells = <2>;
+diff --git a/dts/upstream/src/arm64/broadcom/rp1-nexus.dtsi b/dts/upstream/src/arm64/broadcom/rp1-nexus.dtsi
+index 0ef30d7f1c3..53174b72763 100644
+--- a/dts/upstream/src/arm64/broadcom/rp1-nexus.dtsi
++++ b/dts/upstream/src/arm64/broadcom/rp1-nexus.dtsi
+@@ -1,12 +1,12 @@
+ // SPDX-License-Identifier: (GPL-2.0 OR MIT)
+ 
+-rp1_nexus {
++rp1_nexus: rp1_nexus {
+ 	compatible = "pci1de4,1";
+ 	#address-cells = <3>;
+ 	#size-cells = <2>;
+ 	ranges = <0x01 0x00 0x00000000
+ 		  0x02000000 0x00 0x00000000
+-		  0x0 0x400000>;
++		  0x0 0x410000>;
+ 	interrupt-controller;
+ 	#interrupt-cells = <2>;
+ 
+-- 
+2.53.0
+

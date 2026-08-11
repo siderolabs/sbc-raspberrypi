@@ -1,0 +1,244 @@
+From 0706add3b9231f9387c1a606bf83175873bf9f52 Mon Sep 17 00:00:00 2001
+From: appkins <13772502+appkins@users.noreply.github.com>
+Date: Mon, 16 Mar 2026 13:02:41 -0500
+Subject: [PATCH 02/15] arm: bcm283x: add BCM2712 SoC support
+
+Add Kconfig entry for BCM2712 SoC with driver selections for RP1
+peripherals, ACPI table definitions, and board type constants
+needed for Raspberry Pi 5 support.
+
+Link: https://github.com/sidero-community/u-boot
+Signed-off-by: appkins <13772502+appkins@users.noreply.github.com>
+---
+ arch/arm/mach-bcm283x/Kconfig                 | 16 ++++++++
+ .../mach-bcm283x/include/mach/acpi/bcm2711.h  | 37 +++++++++++++++++--
+ arch/arm/mach-bcm283x/init.c                  | 26 +++++++++++--
+ drivers/video/bcm2835.c                       |  1 +
+ include/broadcom/bcm_board_types.h            | 32 ++++++++++++++++
+ 5 files changed, 106 insertions(+), 6 deletions(-)
+ create mode 100644 include/broadcom/bcm_board_types.h
+
+diff --git a/arch/arm/mach-bcm283x/Kconfig b/arch/arm/mach-bcm283x/Kconfig
+index d9303e8c281..861d0d9a1b5 100644
+--- a/arch/arm/mach-bcm283x/Kconfig
++++ b/arch/arm/mach-bcm283x/Kconfig
+@@ -56,6 +56,22 @@ config BCM2711_64B
+ 	select BLOBLIST_ALLOC if GENERATE_ACPI_TABLE
+ 	select BLOBLIST_TABLES if GENERATE_ACPI_TABLE
+ 
++config BCM2712
++	bool "Broadcom BCM2712 SoC support"
++	depends on ARCH_BCM283X
++	select DRIVER_GICV2
++	select ARM64
++	select CPU_ARMV8
++	select PINCTRL_BCM2712 if PINCTRL
++	select RP1_GPIO
++	select CLK_RP1 if CLK
++	select ARMV8_MULTIENTRY if GENERATE_ACPI_TABLE
++	select BLOBLIST if GENERATE_ACPI_TABLE
++	select BLOBLIST_ALLOC if GENERATE_ACPI_TABLE
++	select BLOBLIST_TABLES if GENERATE_ACPI_TABLE
++	imply OF_UPSTREAM
++	imply BOARD_TYPES
++
+ menu "Broadcom BCM283X family"
+ 	depends on ARCH_BCM283X
+ choice
+diff --git a/arch/arm/mach-bcm283x/include/mach/acpi/bcm2711.h b/arch/arm/mach-bcm283x/include/mach/acpi/bcm2711.h
+index a86875b1833..d49c9f59fb2 100644
+--- a/arch/arm/mach-bcm283x/include/mach/acpi/bcm2711.h
++++ b/arch/arm/mach-bcm283x/include/mach/acpi/bcm2711.h
+@@ -45,24 +45,51 @@
+ #define PCIE_RC_CFG_PRIV1_LINK_CAPABILITY         0x04dc
+ #define  LINK_CAPABILITY_ASPM_SUPPORT_MASK         0xc00
+ 
++#define PCIE_MISC_RC_CONFIG_RETRY_TIMEOUT         0x405c
++
+ #define PCIE_RC_DL_MDIO_ADDR                      0x1100
+ #define PCIE_RC_DL_MDIO_WR_DATA                   0x1104
+ #define PCIE_RC_DL_MDIO_RD_DATA                   0x1108
+ 
++#define PCIE_RC_PL_PHY_CTL_15                     0x184c
++#define PCIE_RC_PL_PHY_CTL_15_PM_CLK_PERIOD_MASK  0xff
++
+ #define PCIE_MISC_MISC_CTRL                       0x4008
+ #define  MISC_CTRL_SCB_ACCESS_EN_MASK             0x1000
+ #define  MISC_CTRL_CFG_READ_UR_MODE_MASK          0x2000
+ #define  MISC_CTRL_MAX_BURST_SIZE_MASK            0x300000
+-#define  MISC_CTRL_MAX_BURST_SIZE_128             0x0
++#define  MISC_CTRL_MAX_BURST_SIZE_128(pcie)	\
++	((pcie)->cfg->offsets[MAX_BURST_SIZE_128])
+ #define  MISC_CTRL_SCB0_SIZE_MASK                 0xf8000000
++#define  MISC_CTRL_PCIE_RCB_MPS_MODE_MASK         0x400
+ 
+ #define PCIE_MISC_CPU_2_PCIE_MEM_WIN0_LO          0x400c
+ #define PCIE_MISC_CPU_2_PCIE_MEM_WIN0_HI          0x4010
+ #define PCIE_MEM_WIN0_LO(win)	\
+ 		PCIE_MISC_CPU_2_PCIE_MEM_WIN0_LO + ((win) * 4)
+ 
++#define PCIE_MISC_UBUS_CTRL                                 0x40a4
++#define PCIE_MISC_UBUS_CTRL_UBUS_PCIE_REPLY_ERR_DIS_MASK    BIT(13)
++#define PCIE_MISC_UBUS_CTRL_UBUS_PCIE_REPLY_DECERR_DIS_MASK BIT(19)
++#define PCIE_MISC_UBUS_TIMEOUT                              0x40a8
++#define PCIE_MISC_UBUS_BAR1_CONFIG_REMAP_ACCESS_EN_MASK			BIT(0)
++#define PCIE_MISC_UBUS_BAR1_CONFIG_REMAP										0x40ac
++#define PCIE_MISC_UBUS_BAR4_CONFIG_REMAP										0x410c
++
++#define PCIE_MISC_CTRL_1                          0x40A0
++#define  PCIE_MISC_CTRL_1_EN_VDM_QOS_CONTROL_MASK BIT(5)
++
++#define PCIE_MISC_AXI_INTF_CTRL                   0x416C
++#define  AXI_EN_RCLK_QOS_ARRAY_FIX                BIT(13)
++#define  AXI_EN_QOS_UPDATE_TIMING_FIX             BIT(12)
++#define  AXI_DIS_QOS_GATING_IN_MASTER             BIT(11)
++#define  AXI_REQFIFO_EN_QOS_PROPAGATION           BIT(7)
++#define  AXI_MASTER_MAX_OUTSTANDING_REQUESTS_MASK	0x3f
++#define PCIE_MISC_AXI_READ_ERROR_DATA             0x4170
++
+ #define PCIE_MEM_WIN0_HI(win)	\
+ 		PCIE_MISC_CPU_2_PCIE_MEM_WIN0_HI + ((win) * 4)
++#define PCIE_MISC_PCIE_CTRL                       0x4064
+ #define PCIE_MISC_RC_BAR1_CONFIG_LO               0x402c
+ #define  RC_BAR1_CONFIG_LO_SIZE_MASK                0x1f
+ #define PCIE_MISC_RC_BAR2_CONFIG_LO               0x4034
+@@ -70,6 +97,7 @@
+ #define PCIE_MISC_RC_BAR2_CONFIG_HI               0x4038
+ #define PCIE_MISC_RC_BAR3_CONFIG_LO               0x403c
+ #define  RC_BAR3_CONFIG_LO_SIZE_MASK                0x1f
++#define PCIE_MISC_RC_BAR4_CONFIG_LO               0x40d4
+ #define PCIE_MISC_PCIE_STATUS                     0x4068
+ #define  STATUS_PCIE_PORT_MASK                      0x80
+ #define  STATUS_PCIE_PORT_SHIFT                        7
+@@ -93,7 +121,8 @@
+ #define PCIE_MEM_WIN0_LIMIT_HI(win)	\
+ 	 PCIE_MISC_CPU_2_PCIE_MEM_WIN0_LIMIT_HI + ((win) * 8)
+ 
+-#define PCIE_MISC_HARD_PCIE_HARD_DEBUG            0x4204
++#define PCIE_MISC_HARD_PCIE_HARD_DEBUG(pcie)	\
++			((pcie)->cfg->offsets[PCIE_HARD_DEBUG])
+ #define  PCIE_HARD_DEBUG_SERDES_IDDQ_MASK         0x08000000
+ 
+ #define PCIE_INTR2_CPU_STATUS                 0x4300
+@@ -106,7 +135,8 @@
+ #define PCIE_MSI_INTR2_CLR                    0x4508
+ #define PCIE_MSI_INTR2_MASK_SET               0x4510
+ 
+-#define PCIE_RGR1_SW_INIT_1                   0x9210
++#define PCIE_RGR1_SW_INIT_1(pcie)	\
++	((pcie)->cfg->offsets[RGR1_SW_INIT_1])
+ #define PCIE_EXT_CFG_INDEX                    0x9000
+ /* A small window pointing at the ECAM of the device selected by CFG_INDEX */
+ #define PCIE_EXT_CFG_DATA                     0x8000
+@@ -124,6 +154,7 @@
+ 
+ #define PCIE_RGR1_SW_INIT_1_INIT_MASK                           0x2
+ #define PCIE_RGR1_SW_INIT_1_PERST_MASK                          0x1
++#define PCIE_RGR1_SW_INIT_1_PERSTB_MASK                         0x4
+ 
+ #define PCIE_MISC_HARD_PCIE_HARD_DEBUG_SERDES_IDDQ_MASK         0x08000000
+ 
+diff --git a/arch/arm/mach-bcm283x/init.c b/arch/arm/mach-bcm283x/init.c
+index 7a1de22e0ae..97a6b9aa5b3 100644
+--- a/arch/arm/mach-bcm283x/init.c
++++ b/arch/arm/mach-bcm283x/init.c
+@@ -18,7 +18,7 @@
+ #ifdef CONFIG_ARM64
+ #include <asm/armv8/mmu.h>
+ 
+-#define MEM_MAP_MAX_ENTRIES (4)
++#define MEM_MAP_MAX_ENTRIES (7)
+ 
+ static struct mm_region bcm283x_mem_map[MEM_MAP_MAX_ENTRIES] = {
+ 	{
+@@ -76,15 +76,35 @@ static struct mm_region bcm2712_mem_map[MEM_MAP_MAX_ENTRIES] = {
+ 		.attrs = PTE_BLOCK_MEMTYPE(MT_NORMAL) |
+ 			 PTE_BLOCK_INNER_SHARE
+ 	}, {
+-		/* Beginning of AXI bus where uSD controller lives */
++		/* AXI/PCIe address space - contains PCIe controllers and peripherals
++		 * Maps 0x1000000000-0x1100000000 (4GB range)
++		 */
+ 		.virt = 0x1000000000UL,
+ 		.phys = 0x1000000000UL,
++		.size = 0x0100000000UL,
++		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
++			 PTE_BLOCK_NON_SHARE |
++			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
++		}, {
++		/* Beginning of PCIe section for NVMe */
++		.virt = 0x1b80000000UL,
++		.phys = 0x1b80000000UL,
++		.size = 0x80000000UL,
++		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
++			 PTE_BLOCK_NON_SHARE |
++			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
++	}, {
++		/* Beginning of PCIe section */
++		.virt = 0x1f00000000UL,
++		.phys = 0x1f00000000UL,
+ 		.size = 0x0002000000UL,
+ 		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+ 			 PTE_BLOCK_NON_SHARE |
+ 			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+ 	}, {
+-		/* SoC bus */
++		/* SoC peripheral bus - UART, timers, GPIO, etc.
++		 * Ranges from 0x107c000000, mapped to local 0x00000000
++		 */
+ 		.virt = 0x107c000000UL,
+ 		.phys = 0x107c000000UL,
+ 		.size = 0x0004000000UL,
+diff --git a/drivers/video/bcm2835.c b/drivers/video/bcm2835.c
+index 0c81e606622..0e0cc1979eb 100644
+--- a/drivers/video/bcm2835.c
++++ b/drivers/video/bcm2835.c
+@@ -66,6 +66,7 @@ static int bcm2835_video_probe(struct udevice *dev)
+ static const struct udevice_id bcm2835_video_ids[] = {
+ 	{ .compatible = "brcm,bcm2835-hdmi" },
+ 	{ .compatible = "brcm,bcm2711-hdmi0" },
++	{ .compatible = "brcm,bcm2712-hdmi0" },
+ 	{ .compatible = "brcm,bcm2708-fb" },
+ #if !IS_ENABLED(CONFIG_VIDEO_DT_SIMPLEFB)
+ 	{ .compatible = "simple-framebuffer" },
+diff --git a/include/broadcom/bcm_board_types.h b/include/broadcom/bcm_board_types.h
+new file mode 100644
+index 00000000000..3508b40fa9c
+--- /dev/null
++++ b/include/broadcom/bcm_board_types.h
+@@ -0,0 +1,32 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * This header defines BCM board types.
++ *
++ * Copyright (c) 2024 EPAM Systems
++ *
++ */
++#ifndef _BCM_BOARD_TYPES_H_
++#define _BCM_BOARD_TYPES_H_
++
++/*
++ * TODO: This enumerator defines the main BCM types.
++ * These types are defined by the BCM firmware and requested
++ * via mbox. Currently only one board type was added.
++ * This is needed to determine whether current board is bcm2712
++ * or other to control the behaviour of the following drivers:
++ * macb and pcie_brcmstb. New board enumerators can be added here
++ * if needed.
++ * See https://www.raspberrypi.com/documentation/computers/raspberry-pi.html#raspberry-pi-revision-codes
++ */
++typedef enum {
++	BCM2712_RPI_5_B_NEW = 0x17,
++	BCM2712_CM5 = 0x18,
++	BCM2712_RPI_500 = 0x19,
++	BCM2712_CM5_LITE = 0x1A,
++} bcm_board_type_t;
++
++/* Range constants for Raspberry Pi 5 family boards */
++#define RPI_BOARD_TYPE_RPI5_FAMILY_MIN	BCM2712_RPI_5_B_NEW
++#define RPI_BOARD_TYPE_RPI5_FAMILY_MAX	BCM2712_CM5_LITE
++
++#endif /* _BCM_BOARD_TYPES_H_ */
+-- 
+2.53.0
+

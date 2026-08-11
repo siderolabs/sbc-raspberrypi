@@ -10,5 +10,4 @@ This document contains a list of maintainers in this repo. For now, you become a
 | Overlay Name  | Board                | PR                                                           | Maintainer                       | GitHub ID                           |
 | ------------- | -------------------- | ------------------------------------------------------------ | -------------------------------- | ----------------------------------- |
 | rpi_generic   | Raspberry Pi Generic | [#1](https://github.com/siderolabs/sbc-raspberrypi/pull/1)   | TBD (Initial PR moved from pkgs) |
-| rpi_5         | Raspberry Pi 5       | [#71](https://github.com/siderolabs/sbc-raspberrypi/pull/71) | TBD (derived from rpi_generic)   |
 | revpi_generic | RevolutionPi         | [#44](https://github.com/siderolabs/sbc-raspberrypi/pull/44) | Martin Schuessler                | [c0ffee](https://github.com/c0ffee) |

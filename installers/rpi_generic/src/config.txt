@@ -13,6 +13,7 @@ arm_64bit=1
 arm_boost=1
 # Enable the primary/console UART.
 enable_uart=1
+[pi4]
 # Disable Bluetooth.
 dtoverlay=disable-bt
 # Disable Wireless Lan.
