@@ -3,15 +3,21 @@ From: Andrea della Porta <andrea.porta@suse.com>
 Date: Tue, 16 Sep 2025 10:59:21 +0300
 Subject: [PATCH] Amend the RP1 ethernet node to work with upstream driver
 
-Rebased onto raspberrypi/linux stable_20260724. The bcm2712-rpi-cm5.dtsi hunk
-was refreshed: upstream added pinctrl-names/pinctrl-0 = <&eth0_irq_pins>,
-renumbered the PHY from ethernet-phy@1 (reg 0x1) to ethernet-phy@0 (reg 0x0),
-and changed interrupt-parent from &gpio to &rp1_gpio. The bcm2712-rpi-5-b.dts
-hunk still matches upstream and is unchanged.
+Rebased onto raspberrypi/linux stable_20260724. The local repository adjustment
+is limited to the bcm2712-rpi-cm5.dtsi hunk; the bcm2712-rpi-5-b.dts hunk is
+unchanged. Keep the vendor CM5 PHY address, remove the stale reg property
+inherited by the CM5 MDIO bus node, and omit the CM5 pinctrl assignment.
+
+Hardware validation used a Raspberry Pi Compute Module 5 Rev 1.0 on a CM5 IO
+board with Talos 1.14.0 and Linux 6.18.48. In a one-variable A/B test, restoring
+the pinctrl assignment prevented the board from regaining LAN connectivity.
+Without the assignment, the runtime FDT retained ethernet-phy@0 with reg 0, the
+BCM54210E linked at 1 Gbps, and the Kubernetes node returned Ready. The PHY IRQ
+request still fell back to polling.
 ---
  .../boot/dts/broadcom/bcm2712-rpi-5-b.dts      | 14 ++++++++++----
- .../boot/dts/broadcom/bcm2712-rpi-cm5.dtsi     | 20 +++++++++++++-------
- 2 files changed, 23 insertions(+), 11 deletions(-)
+ .../boot/dts/broadcom/bcm2712-rpi-cm5.dtsi     | 21 ++++++++++++---------
+ 2 files changed, 22 insertions(+), 13 deletions(-)
 
 diff --git a/arch/arm64/boot/dts/broadcom/bcm2712-rpi-5-b.dts b/arch/arm64/boot/dts/broadcom/bcm2712-rpi-5-b.dts
 index 2939214..a2c3450 100644
@@ -44,18 +50,18 @@ diff --git a/arch/arm64/boot/dts/broadcom/bcm2712-rpi-cm5.dtsi b/arch/arm64/boot
 index 4eb7818..18e8157 100644
 --- a/arch/arm64/boot/dts/broadcom/bcm2712-rpi-cm5.dtsi
 +++ b/arch/arm64/boot/dts/broadcom/bcm2712-rpi-cm5.dtsi
-@@ -156,16 +156,22 @@ rp1_target: &pcie2 {
+@@ -156,16 +156,19 @@ rp1_target: &pcie2 {
  &rp1_eth {
  	status = "okay";
  	phy-handle = <&phy1>;
 -	phy-reset-gpios = <&rp1_gpio 32 GPIO_ACTIVE_LOW>;
 -	phy-reset-duration = <5>;
- 	pinctrl-names = "default";
- 	pinctrl-0 = <&eth0_irq_pins>;
+-	pinctrl-names = "default";
+-	pinctrl-0 = <&eth0_irq_pins>;
 
 -	phy1: ethernet-phy@0 {
 +	mdio {
- 		reg = <0x0>;
+-		reg = <0x0>;
 -		brcm,powerdown-enable;
 -		interrupt-parent = <&rp1_gpio>;
 -		interrupts = <37 IRQ_TYPE_LEVEL_LOW>;

@@ -1,10 +1,5 @@
-Run `make sync` to synchronize:
-
-- `patches/*.patch`
-- `overlays/*.dts`
-
-The sync source is the openSUSE `raspberrypi-firmware-dt` SRPM.
-(https://build.opensuse.org/package/show/hardware:boot/raspberrypi-firmware-dt)
-
 These patches and overlays are part of (and derived from) the Linux kernel, covered by the GPLv2 license.
-The patches are downloaded without modifications from the SUSE repository.
+They were originally sourced from the openSUSE `raspberrypi-firmware-dt` SRPM
+(https://build.opensuse.org/package/show/hardware:boot/raspberrypi-firmware-dt).
+They are maintained in this repository to match the `raspberrypi_kernel_version`
+in the root `Pkgfile` and include local compatibility adjustments.
