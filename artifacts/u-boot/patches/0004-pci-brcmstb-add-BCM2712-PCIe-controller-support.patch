@@ -1,0 +1,868 @@
+From f473594e6361ada503dd77dbec6270a584afaf3f Mon Sep 17 00:00:00 2001
+From: appkins <13772502+appkins@users.noreply.github.com>
+Date: Mon, 16 Mar 2026 13:02:42 -0500
+Subject: [PATCH 04/15] pci: brcmstb: add BCM2712 PCIe controller support
+
+Extend the brcmstb PCIe driver with BCM2712 support including
+64-bit address handling, MIP support, and RC BAR configuration
+for the Raspberry Pi 5 PCIe controllers.
+
+Link: https://github.com/sidero-community/u-boot
+Signed-off-by: appkins <13772502+appkins@users.noreply.github.com>
+---
+ drivers/pci/pcie_brcmstb.c | 690 +++++++++++++++++++++++++++++++++----
+ include/pci_ids.h          |   3 +
+ 2 files changed, 632 insertions(+), 61 deletions(-)
+
+diff --git a/drivers/pci/pcie_brcmstb.c b/drivers/pci/pcie_brcmstb.c
+index f089c48f028..d9693c6fe7b 100644
+--- a/drivers/pci/pcie_brcmstb.c
++++ b/drivers/pci/pcie_brcmstb.c
+@@ -15,15 +15,19 @@
+ #include <asm/arch/acpi/bcm2711.h>
+ #include <errno.h>
+ #include <dm.h>
++#include <dm/device.h>
+ #include <dm/ofnode.h>
+ #include <pci.h>
+ #include <asm/io.h>
+ #include <linux/bitfield.h>
+ #include <linux/log2.h>
+ #include <linux/iopoll.h>
++#include <reset.h>
+ 
+ /* PCIe parameters */
+ #define BRCM_NUM_PCIE_OUT_WINS				4
++#define BRCM_MAX_INBOUND_WINS		16
++#define BRCM_MAX_MEMC		3
+ 
+ /* MDIO registers */
+ #define MDIO_PORT0					0x0
+@@ -49,18 +53,86 @@
+ #define SSC_STATUS_PLL_LOCK_MASK			0x800
+ #define SSC_STATUS_PLL_LOCK_SHIFT			11
+ 
++enum {
++	RGR1_SW_INIT_1,
++	PCIE_HARD_DEBUG,
++	MAX_BURST_SIZE_128,
++};
++
++enum brcm_pcie_type {
++	BRCM_PCIE_BCM_GENERIC,
++	BRCM_PCIE_BCM2712,
++};
++
++/**
++ * struct inbound_win - PCIe inbound window mapping
++ * @size:		Size of the inbound window (in bytes)
++ * @pci_offset:		Base address of the window as seen from the PCIe (bus) side
++ * @cpu_addr:		Base address of the window in system (CPU physical) memory
++ */
++struct inbound_win {
++	u64 size;
++	u64 pci_offset;
++	u64 cpu_addr;
++};
++
++struct brcm_pcie;
++
++/**
++ * struct brcm_pcie_cfg_data - SoC-specific PCIe controller config and callbacks
++ * @offsets:		Pointer to SoC-specific register offset table
++ * @type:		PCIe controller hardware type (see enum brcm_pcie_type)
++ *
++ * @perst_set:		Function to assert/deassert PERST# (PCIe reset signal)
++ * @bridge_sw_init_set:	Function to control bridge software initialization sequence
++ * @rc_mode:		Function to check if controller is operating in Root Complex (RC) mode
++ * @get_inbound_wins:	Function to populate PCIe inbound window mapping for this controller
++ * @post_setup:		Optional: Function to run extra SoC-specific setup after standard init
++ */
++struct brcm_pcie_cfg_data {
++	const int *offsets;
++	const enum brcm_pcie_type type;
++
++	void (*perst_set)(struct brcm_pcie *pcie, u32 val);
++	void (*bridge_sw_init_set)(struct brcm_pcie *pcie, u32 val);
++	bool (*rc_mode)(struct brcm_pcie *pcie);
++	int (*get_inbound_wins)(struct brcm_pcie *pcie, struct inbound_win *inbound_wins);
++	int (*post_setup)(struct brcm_pcie *pcie);
++};
++
+ /**
+  * struct brcm_pcie - the PCIe controller state
++ * @dev:	Pointer to the associated U-Boot device instance
+  * @base: Base address of memory mapped IO registers of the controller
++ * @bus_base:	PCI bus base number managed by this controller
++ *
++ * @cfg:	Pointer to SoC-specific PCIe configuration data
++ *
+  * @gen: Non-zero value indicates limitation of the PCIe controller operation
+  *       to a specific generation (1, 2 or 3)
+  * @ssc: true indicates active Spread Spectrum Clocking operation
++ *
++ * @rescal:	Reset controller handle for "rescal" (PHY calibration)
++ * @bridge_reset: Reset controller handle for PCIe bridge logic
++ *
++ * @num_memc:	Number of memory controllers supported by this PCIe instance
++ * @memc_size:	Size (in bytes) for each memory controller aperture, indexed by MEMC number
+  */
+ struct brcm_pcie {
++	struct udevice		*dev;
+ 	void __iomem		*base;
++	u16							bus_base;
++
++	const struct brcm_pcie_cfg_data *cfg;
+ 
+ 	int			gen;
+ 	bool			ssc;
++
++	struct reset_ctl	rescal;
++	struct reset_ctl	bridge_reset;
++
++	int	num_memc;
++	u64	memc_size[BRCM_MAX_MEMC];
+ };
+ 
+ /**
+@@ -104,6 +176,76 @@ static bool brcm_pcie_rc_mode(struct brcm_pcie *pcie)
+ 	return (val & STATUS_PCIE_PORT_MASK) >> STATUS_PCIE_PORT_SHIFT;
+ }
+ 
++/**
++ * brcm_pcie_perst_set_generic() - Assert or de-assert PERST# for PCIe controller
++ * @pcie: Pointer to the PCIe controller state structure
++ * @val:  Boolean value indicating whether to assert (1) or de-assert (0) PERST#
++ *
++ * Controls the PERST# (PCIe reset) signal for generic Broadcom PCIe controllers.
++ * Asserts or de-asserts the reset line depending on the given value.
++ */
++static void brcm_pcie_perst_set_generic(struct brcm_pcie *pcie, u32 val)
++{
++	if (val)
++		setbits_le32(pcie->base + PCIE_RGR1_SW_INIT_1(pcie),
++			     PCIE_RGR1_SW_INIT_1_PERST_MASK);
++	else
++		clrbits_le32(pcie->base + PCIE_RGR1_SW_INIT_1(pcie),
++			     PCIE_RGR1_SW_INIT_1_PERST_MASK);
++}
++
++/**
++ * brcm_pcie_perst_set_2712() - Control PERST# for BCM2712 (Raspberry Pi 5) PCIe controller
++ * @pcie: Pointer to the PCIe controller state structure
++ * @val:  Boolean value indicating whether to assert (1) or de-assert (0) PERST#
++ *
++ * On BCM2712, the PERST# control bit has moved and the polarity is inverted.
++ * This function sets or clears the PERST# accordingly for this specific SoC.
++ */
++static void brcm_pcie_perst_set_2712(struct brcm_pcie *pcie, u32 val)
++{
++	u32 tmp;
++
++	tmp = readl(pcie->base + PCIE_MISC_PCIE_CTRL);
++	u32p_replace_bits(&tmp, !val, PCIE_RGR1_SW_INIT_1_PERSTB_MASK);
++	writel(tmp, pcie->base + PCIE_MISC_PCIE_CTRL);
++}
++
++/**
++ * brcm_pcie_bridge_sw_init_set_generic() - Control SW_INIT for PCIe bridge (generic)
++ * @pcie: Pointer to the PCIe controller state structure
++ * @val:  Boolean value indicating whether to assert (1) or de-assert (0) SW_INIT
++ *
++ * Asserts or de-asserts the SW_INIT bit in the generic Broadcom PCIe controller,
++ * initializing or releasing the PCIe bridge logic as required.
++ */
++static void brcm_pcie_bridge_sw_init_set_generic(struct brcm_pcie *pcie, u32 val)
++{
++	if (val)
++		setbits_le32(pcie->base + PCIE_RGR1_SW_INIT_1(pcie),
++					PCIE_RGR1_SW_INIT_1_INIT_MASK);
++	else
++		clrbits_le32(pcie->base + PCIE_RGR1_SW_INIT_1(pcie),
++					PCIE_RGR1_SW_INIT_1_INIT_MASK);
++}
++
++/**
++ * brcm_pcie_bridge_sw_init_set_2712() - Control bridge SW_INIT for BCM2712 PCIe controller
++ * @pcie: Pointer to the PCIe controller state structure
++ * @val:  Boolean value indicating whether to assert (1) or de-assert (0) SW_INIT
++ *
++ * For the BCM2712 (e.g., Raspberry Pi 5), the bridge SW_INIT control is handled
++ * through a dedicated reset controller. This function asserts or de-asserts
++ * the reset as needed for bridge initialization.
++ */
++static void brcm_pcie_bridge_sw_init_set_2712(struct brcm_pcie *pcie, u32 val)
++{
++	if (val)
++		reset_assert(&pcie->bridge_reset);
++	else
++		reset_deassert(&pcie->bridge_reset);
++}
++
+ /**
+  * brcm_pcie_link_up() - Check whether the PCIe link is up
+  * @pcie: Pointer to the PCIe controller state
+@@ -134,6 +276,7 @@ static int brcm_pcie_config_address(const struct udevice *dev, pci_dev_t bdf,
+ 	 * Busses 0 (host PCIe bridge) and 1 (its immediate child)
+ 	 * are limited to a single device each
+ 	 */
++	pci_bus -= pcie->bus_base;
+ 	if (pci_bus < 2 && pci_dev > 0)
+ 		return -EINVAL;
+ 
+@@ -331,7 +474,7 @@ static void brcm_pcie_set_outbound_win(struct brcm_pcie *pcie,
+ 	writel(tmp, base + PCIE_MEM_WIN0_BASE_LIMIT(win));
+ 
+ 	/* Write the cpu & limit addr upper bits */
+-	high_addr_shift = MEM_WIN0_BASE_LIMIT_BASE_HI_SHIFT;
++	high_addr_shift = hweight32(MEM_WIN0_BASE_LIMIT_BASE_MASK);
+ 	phys_addr_mb_high = phys_addr_mb >> high_addr_shift;
+ 	tmp = readl(base + PCIE_MEM_WIN0_BASE_HI(win));
+ 	u32p_replace_bits(&tmp, phys_addr_mb_high,
+@@ -345,28 +488,389 @@ static void brcm_pcie_set_outbound_win(struct brcm_pcie *pcie,
+ 	writel(tmp, base + PCIE_MEM_WIN0_LIMIT_HI(win));
+ }
+ 
++/**
++ * brcm_pcie_get_resets_dt() - Retrieve reset controls from device tree
++ * @dev: U-Boot device pointer
++ *
++ * Looks up and initializes the reset controls for "rescal" and "bridge"
++ * from the device tree, storing the reset handles in the PCIe state struct.
++ */
++static void brcm_pcie_get_resets_dt(struct udevice *dev)
++{
++	struct brcm_pcie *pcie = dev_get_priv(dev);
++	int ret;
++
++	ret = reset_get_by_name(dev, "rescal", &pcie->rescal);
++	if (ret) {
++		printf("Unable to get rescal reset\n");
++		return;
++	}
++
++	ret = reset_get_by_name(dev, "bridge", &pcie->bridge_reset);
++	if (ret) {
++		printf("Unable to get bridge reset\n");
++		return;
++	}
++}
++
++/**
++ * brcm_pcie_do_reset() - De-assert the rescal reset for PCIe controller
++ * @dev: U-Boot device pointer
++ *
++ * De-asserts the "rescal" reset line to bring the PCIe controller out of reset.
++ */
++static void brcm_pcie_do_reset(struct udevice *dev)
++{
++	struct brcm_pcie *pcie = dev_get_priv(dev);
++	int ret;
++
++	ret = reset_deassert(&pcie->rescal);
++	if (ret)
++		printf("failed to deassert 'rescal'\n");
++}
++
++/**
++ * brcm_pcie_bar_reg_offset() - Get register offset for RC BAR config
++ * @bar: BAR number (1-6)
++ *
++ * Calculates and returns the register offset for configuring the Root Complex
++ * BAR (Base Address Register) for the specified BAR number in the Broadcom
++ * PCIe controller.
++ *
++ * Return: The offset (in bytes) of the BAR config register for the given BAR.
++ */
++static u32 brcm_pcie_bar_reg_offset(int bar)
++{
++	if (bar <= 3)
++		return PCIE_MISC_RC_BAR1_CONFIG_LO + 8 * (bar - 1);
++	else
++		return PCIE_MISC_RC_BAR4_CONFIG_LO + 8 * (bar - 4);
++}
++
++/**
++ * brcm_pcie_ubus_reg_offset() - Get register offset for UBUS BAR remap config
++ * @bar: BAR number (1-6)
++ *
++ * Calculates and returns the register offset for configuring the UBUS BAR
++ * remap register for the specified BAR number in the Broadcom PCIe controller.
++ * This is used for address remapping between the PCIe bus and the UBUS fabric.
++ *
++ * Return: The offset (in bytes) of the UBUS BAR remap register for the given BAR.
++ */
++static u32 brcm_pcie_ubus_reg_offset(int bar)
++{
++	if (bar <= 3)
++		return PCIE_MISC_UBUS_BAR1_CONFIG_REMAP + 8 * (bar - 1);
++	else
++		return PCIE_MISC_UBUS_BAR4_CONFIG_REMAP + 8 * (bar - 4);
++}
++
++/**
++ * add_inbound_win() - Add an inbound PCIe window configuration
++ * @b:      Pointer to an inbound_win structure to populate
++ * @count:  Pointer to the current inbound window count (incremented by this function)
++ * @size:   Size of the inbound window in bytes
++ * @cpu_addr:  CPU (system physical) address where the window starts
++ * @pci_offset: PCIe bus address offset for this window
++ *
++ * Populates an inbound_win structure with the provided size, CPU address, and
++ * PCIe offset, then increments the inbound window count.
++ */
++static void add_inbound_win(struct inbound_win *b, u8 *count, u64 size,
++			    u64 cpu_addr, u64 pci_offset)
++{
++	b->size = size;
++	b->cpu_addr = cpu_addr;
++	b->pci_offset = pci_offset;
++	(*count)++;
++}
++
++/**
++ * brcm_pcie_get_inbound_wins_bcm2712() - Get inbound PCIe windows for BCM2712
++ * @pcie:         Pointer to the Broadcom PCIe controller structure
++ * @inbound_wins: Array of inbound_win structures to populate
++ *
++ * Retrieves and populates the list of inbound PCIe address windows specific to
++ * the Broadcom BCM2712 SoC. These inbound windows define the regions of system
++ * memory that can be accessed by PCIe devices via DMA. The function fills out
++ * the provided inbound_win array with the relevant window parameters.
++ *
++ * Return: The number of inbound windows populated, or a negative error code on failure.
++ */
++static int brcm_pcie_get_inbound_wins_bcm2712(struct brcm_pcie *pcie, struct inbound_win *inbound_wins)
++{
++	u64 tot_size = 0;
++	struct pci_region entry;
++	struct udevice *dev = pcie->dev;
++	u64 lowest_pci_addr = ~(u64)0;
++	int i = 0;
++	u8 n = 0;
++
++	/*
++	 * The HW registers (and PCIe) use order-1 numbering for BARs.  As such,
++	 * we have inbound_wins[0] unused and BAR1 starts at inbound_wins[1].
++	 */
++	struct inbound_win *b_begin = &inbound_wins[1];
++	struct inbound_win *b = b_begin;
++
++	/*
++	 * 7712 and newer chips may have many BARs, with each
++	 * offering a non-overlapping viewport to system memory.
++	 * That being said, each BARs size must still be a power of
++	 * two.
++	 */
++	while (pci_get_dma_regions(dev, &entry, i++) == 0) {
++		u64 pci_start = entry.bus_start;
++		u64 pci_offset = entry.bus_start - entry.phys_start;
++		u64 cpu_start = entry.phys_start;
++		u64 size = 1ULL << fls64(entry.size - 1);
++
++		tot_size += size;
++		if (pci_start < lowest_pci_addr)
++			lowest_pci_addr = pci_start;
++
++		add_inbound_win(b++, &n, size, cpu_start, pci_offset);
++	}
++
++	if (lowest_pci_addr == ~(u64)0) {
++		printf("DT node has no dma-ranges\n");
++		return -EINVAL;
++	}
++
++	return n;
++}
++
++/**
++ * brcm_pcie_get_inbound_wins_generic() - Get and configure inbound PCIe windows for generic Broadcom SoCs
++ * @pcie:         Pointer to the Broadcom PCIe controller structure
++ * @inbound_wins: Array of inbound_win structures to populate
++ *
++ * Sets up the inbound PCIe address windows for generic (non-BCM2712) Broadcom
++ * PCIe controllers. This function:
++ *   - Disables inbound window 1 (which on legacy STB chips was mapped to internal SoC registers, not RAM; this feature is deprecated for security reasons).
++ *   - Enables inbound window 2, the primary inbound window for DMA from PCIe devices into system memory. The window size is rounded up to the next power of two, and address translation is set based on the region's physical and bus addresses.
++ *   - Disables inbound window 3, which on some chips provides an alternative access path with selectable endianness.
++ *
++ * The function populates the provided inbound_win array with these window configurations and updates the PCIe controller's memory controller count and size.
++ *
++ * Return: The total number of inbound windows configured.
++ */
++static int brcm_pcie_get_inbound_wins_generic(struct brcm_pcie *pcie, struct inbound_win *inbound_wins)
++{
++	struct udevice *dev = pcie->dev;
++	struct pci_region region;
++	u8 n = 0;
++
++	/*
++	 * The HW registers (and PCIe) use order-1 numbering for BARs.  As such,
++	 * we have inbound_wins[0] unused and BAR1 starts at inbound_wins[1].
++	 */
++	struct inbound_win *b_begin = &inbound_wins[1];
++	struct inbound_win *b = b_begin;
++
++	/*
++	 * STB chips beside 7712 disable the first inbound window default.
++	 * Rather being mapped to system memory it is mapped to the
++	 * internal registers of the SoC.  This feature is deprecated, has
++	 * security considerations, and is not implemented in our modern
++	 * SoCs.
++	 */
++	add_inbound_win(b++, &n, 0, 0, 0);
++
++	/* Enable inbound window 2, the main inbound window for STB chips */
++	pci_get_dma_regions(dev, &region, 0);
++	u64 win2_size = 1ULL << fls64(region.size - 1);
++	u64 win2_pcie_offset = region.bus_start - region.phys_start;
++	add_inbound_win(b++, &n, win2_size, region.phys_start, win2_pcie_offset);
++	pcie->num_memc = 1;
++	pcie->memc_size[0] = region.size;
++
++	/*
++	 * Disable inbound window 3. On some chips presents the same
++	 * window as #2 but the data appears in a settable endianness.
++	 */
++	add_inbound_win(b++, &n, 0, 0, 0);
++
++	return n;
++}
++
++/**
++ * brcm_set_inbound_win_registers() - Program inbound PCIe window registers
++ * @pcie:             Pointer to the Broadcom PCIe controller structure
++ * @inbound_wins:     Array of inbound_win structures to configure
++ * @num_inbound_wins: Number of inbound windows to program
++ *
++ * This function loops through all provided inbound windows (starting at index 1)
++ * and writes the required values to the hardware registers for proper inbound
++ * DMA operation by PCIe devices.
++ */
++static void brcm_set_inbound_win_registers(struct brcm_pcie *pcie,
++							const struct inbound_win *inbound_wins,
++							u8 num_inbound_wins)
++{
++	void __iomem *base = pcie->base;
++	int i;
++
++	for (i = 1; i <= num_inbound_wins; i++) {
++		u64 pci_offset = inbound_wins[i].pci_offset;
++		u64 cpu_addr = inbound_wins[i].cpu_addr;
++		u64 size = inbound_wins[i].size;
++		u32 reg_offset = brcm_pcie_bar_reg_offset(i);
++		u32 tmp = lower_32_bits(pci_offset);
++
++		u32p_replace_bits(&tmp, brcm_pcie_encode_ibar_size(size), RC_BAR1_CONFIG_LO_SIZE_MASK);
++
++		/* Write low */
++		writel(tmp, base + reg_offset);
++		/* Write high */
++		writel(upper_32_bits(pci_offset), base + reg_offset + 4);
++
++		/*
++		 * Most STB chips:
++		 *     Do nothing.
++		 * 7712:
++		 *     All of their BARs need to be set.
++		 */
++		if (pcie->cfg->type == BRCM_PCIE_BCM2712) {
++			/* BUS remap register settings */
++			reg_offset = brcm_pcie_ubus_reg_offset(i);
++			tmp = lower_32_bits(cpu_addr) & ~0xfff;
++			tmp |= PCIE_MISC_UBUS_BAR1_CONFIG_REMAP_ACCESS_EN_MASK;
++			writel(tmp, base + reg_offset);
++			tmp = upper_32_bits(cpu_addr);
++			writel(tmp, base + reg_offset + 4);
++		}
++	}
++}
++
++/**
++ * brcm_pcie_post_setup_bcm2712() - Perform post-setup configuration for BCM2712 PCIe controller
++ * @pcie: Pointer to the Broadcom PCIe controller structure
++ *
++ * Performs final hardware configuration for the BCM2712 PCIe controller after initial setup.
++ *
++ * Return: 0 on success, or a negative error code if register programming fails.
++ */
++static int brcm_pcie_post_setup_bcm2712(struct brcm_pcie *pcie)
++{
++	const u16 data[] = { 0x50b9, 0xbda1, 0x0094, 0x97b4, 0x5030, 0x5030, 0x0007 };
++	const u8 regs[] = { 0x16, 0x17, 0x18, 0x19, 0x1b, 0x1c, 0x1e };
++	int ret, i;
++	u32 tmp;
++
++	/* Allow a 54MHz (xosc) refclk source */
++	ret = brcm_pcie_mdio_write(pcie->base, MDIO_PORT0, SET_ADDR_OFFSET, 0x1600);
++	if (ret < 0)
++		return ret;
++
++	for (i = 0; i < ARRAY_SIZE(regs); i++) {
++		ret = brcm_pcie_mdio_write(pcie->base, MDIO_PORT0, regs[i], data[i]);
++		if (ret < 0)
++			return ret;
++	}
++
++	udelay(200);
++
++	/*
++	 * Set L1SS sub-state timers to avoid lengthy state transitions,
++	 * PM clock period is 18.52ns (1/54MHz, round down).
++	 */
++	tmp = readl(pcie->base + PCIE_RC_PL_PHY_CTL_15);
++	tmp &= ~PCIE_RC_PL_PHY_CTL_15_PM_CLK_PERIOD_MASK;
++	tmp |= 0x12;
++	writel(tmp, pcie->base + PCIE_RC_PL_PHY_CTL_15);
++
++	/*
++	 * BCM7712/2712 uses a UBUS-AXI bridge.
++	 * Suppress AXI error responses and return 1s for read failures.
++	 */
++	tmp = readl(pcie->base + PCIE_MISC_UBUS_CTRL);
++	u32p_replace_bits(&tmp, 1, PCIE_MISC_UBUS_CTRL_UBUS_PCIE_REPLY_ERR_DIS_MASK);
++	u32p_replace_bits(&tmp, 1, PCIE_MISC_UBUS_CTRL_UBUS_PCIE_REPLY_DECERR_DIS_MASK);
++	writel(tmp, pcie->base + PCIE_MISC_UBUS_CTRL);
++	writel(0xffffffff, pcie->base + PCIE_MISC_AXI_READ_ERROR_DATA);
++
++	/*
++	 * Adjust timeouts. The UBUS timeout also affects Configuration Request
++	 * Retry responses, as the request will get terminated if
++	 * either timeout expires, so both have to be a large value
++	 * (in clocks of 750MHz).
++	 * Set UBUS timeout to 250ms, then set RC config retry timeout
++	 * to be ~240ms.
++	 *
++	 * If CRSSVE=1 this will stop the core from blocking on a Retry
++	 * response, but does require the device to be well-behaved...
++	 */
++	writel(0xB2D0000, pcie->base + PCIE_MISC_UBUS_TIMEOUT);
++	writel(0xABA0000, pcie->base + PCIE_MISC_RC_CONFIG_RETRY_TIMEOUT);
++
++	/*
++	 * BCM2712 has a configurable QoS mechanism that assigns TLP Traffic Classes
++	 * to separate AXI IDs with a configurable priority scheme.
++	 * Dynamic priority elevation is supported through reception of Type 1
++	 * Vendor Defined Messages, but several bugs make this largely ineffective.
++	 */
++
++	/* Disable broken forwarding search. Set chicken bits for 2712D0 */
++	tmp = readl(pcie->base + PCIE_MISC_AXI_INTF_CTRL);
++	tmp &= ~AXI_REQFIFO_EN_QOS_PROPAGATION;
++	tmp |= AXI_EN_RCLK_QOS_ARRAY_FIX | AXI_EN_QOS_UPDATE_TIMING_FIX |
++		AXI_DIS_QOS_GATING_IN_MASTER;
++	writel(tmp, pcie->base + PCIE_MISC_AXI_INTF_CTRL);
++
++	/*
++	 * Work around spurious QoS=0 assignments to inbound traffic.
++	 * If the QOS_UPDATE_TIMING_FIX bit is Reserved-0, then this is a
++	 * 2712C1 chip, or a single-lane RC. Use the  best-effort alternative
++	 * which is to partially throttle AXI requests in-flight to SDRAM.
++	 */
++	tmp = readl(pcie->base + PCIE_MISC_AXI_INTF_CTRL);
++	if (!(tmp & AXI_EN_QOS_UPDATE_TIMING_FIX)) {
++		tmp &= ~AXI_MASTER_MAX_OUTSTANDING_REQUESTS_MASK;
++		tmp |= 15;
++		writel(tmp, pcie->base + PCIE_MISC_AXI_INTF_CTRL);
++	}
++
++	/* Disable VDM reception by default */
++	tmp = readl(pcie->base + PCIE_MISC_CTRL_1);
++	tmp &= ~PCIE_MISC_CTRL_1_EN_VDM_QOS_CONTROL_MASK;
++	writel(tmp, pcie->base + PCIE_MISC_CTRL_1);
++
++	return 0;
++}
++
+ static int brcm_pcie_probe(struct udevice *dev)
+ {
+ 	struct udevice *ctlr = pci_get_controller(dev);
+ 	struct pci_controller *hose = dev_get_uclass_priv(ctlr);
+ 	struct brcm_pcie *pcie = dev_get_priv(dev);
+ 	void __iomem *base = pcie->base;
+-	struct pci_region region;
+ 	bool ssc_good = false;
++	struct inbound_win inbound_wins[BRCM_MAX_INBOUND_WINS];
++	int num_inbound_wins = 0;
+ 	int num_out_wins = 0;
+-	u64 rc_bar2_offset, rc_bar2_size;
+ 	unsigned int scb_size_val;
+ 	int i, ret;
+ 	u16 nlw, cls, lnksta;
+ 	u32 tmp;
+ 
++	pcie->dev = dev;
++	pcie->bus_base = hose->first_busno;
++
++	/*
++	 * Deassert rescal reset if present.
++	 */
++	if(pcie->rescal.dev)
++		brcm_pcie_do_reset(dev);
++
+ 	/*
+ 	 * Reset the bridge, assert the fundamental reset. Note for some SoCs,
+ 	 * e.g. BCM7278, the fundamental reset should not be asserted here.
+-	 * This will need to be changed when support for other SoCs is added.
+ 	 */
+-	setbits_le32(base + PCIE_RGR1_SW_INIT_1,
+-		     PCIE_RGR1_SW_INIT_1_INIT_MASK | PCIE_RGR1_SW_INIT_1_PERST_MASK);
++	pcie->cfg->bridge_sw_init_set(pcie, 1);
++	if (pcie->cfg->type != BRCM_PCIE_BCM2712)
++		pcie->cfg->perst_set(pcie, 1);
++
+ 	/*
+ 	 * The delay is a safety precaution to preclude the reset signal
+ 	 * from looking like a glitch.
+@@ -374,9 +878,9 @@ static int brcm_pcie_probe(struct udevice *dev)
+ 	udelay(100);
+ 
+ 	/* Take the bridge out of reset */
+-	clrbits_le32(base + PCIE_RGR1_SW_INIT_1, PCIE_RGR1_SW_INIT_1_INIT_MASK);
++	pcie->cfg->bridge_sw_init_set(pcie, 0);
+ 
+-	clrbits_le32(base + PCIE_MISC_HARD_PCIE_HARD_DEBUG,
++	clrbits_le32(base + PCIE_MISC_HARD_PCIE_HARD_DEBUG(pcie),
+ 		     PCIE_HARD_DEBUG_SERDES_IDDQ_MASK);
+ 
+ 	/* Wait for SerDes to be stable */
+@@ -387,34 +891,9 @@ static int brcm_pcie_probe(struct udevice *dev)
+ 			MISC_CTRL_MAX_BURST_SIZE_MASK,
+ 			MISC_CTRL_SCB_ACCESS_EN_MASK |
+ 			MISC_CTRL_CFG_READ_UR_MODE_MASK |
+-			MISC_CTRL_MAX_BURST_SIZE_128);
+-
+-	pci_get_dma_regions(dev, &region, 0);
+-	rc_bar2_offset = region.bus_start - region.phys_start;
+-	rc_bar2_size = 1ULL << fls64(region.size - 1);
+-
+-	tmp = lower_32_bits(rc_bar2_offset);
+-	u32p_replace_bits(&tmp, brcm_pcie_encode_ibar_size(rc_bar2_size),
+-			  RC_BAR2_CONFIG_LO_SIZE_MASK);
+-	writel(tmp, base + PCIE_MISC_RC_BAR2_CONFIG_LO);
+-	writel(upper_32_bits(rc_bar2_offset),
+-	       base + PCIE_MISC_RC_BAR2_CONFIG_HI);
+-
+-	scb_size_val = rc_bar2_size ?
+-		       ilog2(rc_bar2_size) - 15 : 0xf; /* 0xf is 1GB */
+-
+-	tmp = readl(base + PCIE_MISC_MISC_CTRL);
+-	u32p_replace_bits(&tmp, scb_size_val,
+-			  MISC_CTRL_SCB0_SIZE_MASK);
+-	writel(tmp, base + PCIE_MISC_MISC_CTRL);
+-
+-	/* Disable the PCIe->GISB memory window (RC_BAR1) */
+-	clrbits_le32(base + PCIE_MISC_RC_BAR1_CONFIG_LO,
+-		     RC_BAR1_CONFIG_LO_SIZE_MASK);
+-
+-	/* Disable the PCIe->SCB memory window (RC_BAR3) */
+-	clrbits_le32(base + PCIE_MISC_RC_BAR3_CONFIG_LO,
+-		     RC_BAR3_CONFIG_LO_SIZE_MASK);
++			MISC_CTRL_MAX_BURST_SIZE_128(pcie) |
++			MISC_CTRL_PCIE_RCB_MPS_MODE_MASK
++	);
+ 
+ 	/* Mask all interrupts since we are not handling any yet */
+ 	writel(0xffffffff, base + PCIE_MSI_INTR2_MASK_SET);
+@@ -425,32 +904,31 @@ static int brcm_pcie_probe(struct udevice *dev)
+ 	if (pcie->gen)
+ 		brcm_pcie_set_gen(pcie, pcie->gen);
+ 
+-	/* Unassert the fundamental reset */
+-	clrbits_le32(pcie->base + PCIE_RGR1_SW_INIT_1,
+-		     PCIE_RGR1_SW_INIT_1_PERST_MASK);
+-
+ 	/*
+-	 * Wait for 100ms after PERST# deassertion; see PCIe CEM specification
+-	 * sections 2.2, PCIe r5.0, 6.6.1.
+-	 */
+-	mdelay(100);
+-
+-	/* Give the RC/EP time to wake up, before trying to configure RC.
+-	 * Intermittently check status for link-up, up to a total of 100ms.
++	 * Inbound window setup — must be configured before link training
++	 * so the RC is ready for DMA when the endpoint comes up.
+ 	 */
+-	for (i = 0; i < 100 && !brcm_pcie_link_up(pcie); i += 5)
+-		mdelay(5);
++	num_inbound_wins = pcie->cfg->get_inbound_wins(pcie, inbound_wins);
++	if (num_inbound_wins < 0)
++		return num_inbound_wins;
++	brcm_set_inbound_win_registers(pcie, inbound_wins, num_inbound_wins);
+ 
+-	if (!brcm_pcie_link_up(pcie)) {
+-		printf("PCIe BRCM: link down\n");
+-		return -EINVAL;
+-	}
+-
+-	if (!brcm_pcie_rc_mode(pcie)) {
+-		printf("PCIe misconfigured; is in EP mode\n");
+-		return -EINVAL;
++	tmp = readl(base + PCIE_MISC_MISC_CTRL);
++	for (int memc = 0; memc < pcie->num_memc; memc++) {
++		scb_size_val = ilog2(pcie->memc_size[memc]) - 15;
++
++		if (memc == 0)
++			u32p_replace_bits(&tmp, scb_size_val, PCIE_MISC_MISC_CTRL_SCB0_SIZE_MASK);
++		else if (memc == 1)
++			u32p_replace_bits(&tmp, scb_size_val, PCIE_MISC_MISC_CTRL_SCB1_SIZE_MASK);
++		else if (memc == 2)
++			u32p_replace_bits(&tmp, scb_size_val, PCIE_MISC_MISC_CTRL_SCB2_SIZE_MASK);
+ 	}
++	writel(tmp, base + PCIE_MISC_MISC_CTRL);
+ 
++	/*
++	 * Outbound window setup
++	 */
+ 	for (i = 0; i < hose->region_count; i++) {
+ 		struct pci_region *reg = &hose->regions[i];
+ 
+@@ -473,6 +951,49 @@ static int brcm_pcie_probe(struct udevice *dev)
+ 	clrsetbits_le32(base + PCIE_RC_CFG_PRIV1_ID_VAL3,
+ 			PCIE_RC_CFG_PRIV1_ID_VAL3_CLASS_CODE_MASK, 0x060400);
+ 
++	/*
++	 * Run SoC-specific post-setup BEFORE link training.
++	 *
++	 * For BCM2712 this configures the SerDes PLL via MDIO to use the
++	 * 54MHz crystal oscillator (xosc) reference clock.  Without this,
++	 * the PLL runs with default settings and may fail to achieve lock,
++	 * causing PHYLINKUP to never assert and link training to fail.
++	 *
++	 * The Linux kernel's pcie-brcmstb driver calls post_setup() inside
++	 * brcm_pcie_setup() — before brcm_pcie_start_link() deasserts
++	 * PERST#.  Match that ordering here.
++	 */
++	if (pcie->cfg->post_setup) {
++		ret = pcie->cfg->post_setup(pcie);
++		if (ret)
++			return ret;
++	}
++
++	/* Unassert the fundamental reset — this starts link training */
++	pcie->cfg->perst_set(pcie, 0);
++
++	/*
++	 * Wait for 100ms after PERST# deassertion; see PCIe CEM specification
++	 * sections 2.2, PCIe r5.0, 6.6.1.
++	 */
++	mdelay(100);
++
++	/* Give the RC/EP time to wake up, before trying to configure RC.
++	 * Intermittently check status for link-up, up to a total of 100ms.
++	 */
++	for (i = 0; i < 100 && !brcm_pcie_link_up(pcie); i += 5)
++		mdelay(5);
++
++	if (!brcm_pcie_link_up(pcie)) {
++		printf("PCIe BRCM: link down\n");
++		return -EINVAL;
++	}
++
++	if (!pcie->cfg->rc_mode(pcie)) {
++		printf("PCIe misconfigured; is in EP mode\n");
++		return -EINVAL;
++	}
++
+ 	if (pcie->ssc) {
+ 		ret = brcm_pcie_set_ssc(pcie->base);
+ 		if (!ret)
+@@ -514,14 +1035,24 @@ static int brcm_pcie_remove(struct udevice *dev)
+ 	void __iomem *base = pcie->base;
+ 
+ 	/* Assert fundamental reset */
+-	setbits_le32(base + PCIE_RGR1_SW_INIT_1, PCIE_RGR1_SW_INIT_1_PERST_MASK);
++	pcie->cfg->perst_set(pcie, 1);
+ 
+ 	/* Turn off SerDes */
+-	setbits_le32(base + PCIE_MISC_HARD_PCIE_HARD_DEBUG,
++	setbits_le32(base + PCIE_MISC_HARD_PCIE_HARD_DEBUG(pcie),
+ 		     PCIE_HARD_DEBUG_SERDES_IDDQ_MASK);
+ 
+ 	/* Shutdown bridge */
+-	setbits_le32(base + PCIE_RGR1_SW_INIT_1, PCIE_RGR1_SW_INIT_1_INIT_MASK);
++	pcie->cfg->bridge_sw_init_set(pcie, 1);
++
++	/*
++	 * For the controllers that are utilizing reset for bridge Sw init,
++	 * such as BCM2712, reset should be deasserted after assertion.
++	 * Leaving it in asserted state may lead to unexpected hangs in
++	 * the Linux Kernel driver because it do not perform reset initialization
++	 * and start accessing device memory.
++	 */
++	if (pcie->cfg->type == BRCM_PCIE_BCM2712)
++		pcie->cfg->bridge_sw_init_set(pcie, 0);
+ 
+ 	return 0;
+ }
+@@ -546,6 +1077,11 @@ static int brcm_pcie_of_to_plat(struct udevice *dev)
+ 	else
+ 		pcie->gen = max_link_speed;
+ 
++	pcie->cfg = (const struct brcm_pcie_cfg_data *)dev_get_driver_data(dev);
++
++	if (pcie->cfg->type == BRCM_PCIE_BCM2712)
++		brcm_pcie_get_resets_dt(dev);
++
+ 	return 0;
+ }
+ 
+@@ -554,8 +1090,40 @@ static const struct dm_pci_ops brcm_pcie_ops = {
+ 	.write_config	= brcm_pcie_write_config,
+ };
+ 
++static const int brcm_pcie_offsets[] = {
++	[RGR1_SW_INIT_1]     = 0x9210,
++	[PCIE_HARD_DEBUG]    = 0x4204,
++	[MAX_BURST_SIZE_128] = 0x0,
++};
++
++static const struct brcm_pcie_cfg_data brcm_pcie_bcm2711_cfg = {
++	.offsets   = brcm_pcie_offsets,
++	.type               = BRCM_PCIE_BCM_GENERIC,
++	.perst_set          = brcm_pcie_perst_set_generic,
++	.bridge_sw_init_set = brcm_pcie_bridge_sw_init_set_generic,
++	.rc_mode            = brcm_pcie_rc_mode,
++	.get_inbound_wins   = brcm_pcie_get_inbound_wins_generic,
++};
++
++static const int brcm_pcie_offsets_bcm2712[] = {
++	[RGR1_SW_INIT_1]     = 0x0,
++	[PCIE_HARD_DEBUG]    = 0x4304,
++	[MAX_BURST_SIZE_128] = 0x100000,
++};
++
++static const struct brcm_pcie_cfg_data brcm_pcie_bcm2712_cfg = {
++	.offsets            = brcm_pcie_offsets_bcm2712,
++	.type               = BRCM_PCIE_BCM2712,
++	.perst_set          = brcm_pcie_perst_set_2712,
++	.bridge_sw_init_set = brcm_pcie_bridge_sw_init_set_2712,
++	.rc_mode            = brcm_pcie_rc_mode,
++	.post_setup         = brcm_pcie_post_setup_bcm2712,
++	.get_inbound_wins   = brcm_pcie_get_inbound_wins_bcm2712,
++};
++
+ static const struct udevice_id brcm_pcie_ids[] = {
+-	{ .compatible = "brcm,bcm2711-pcie" },
++	{ .compatible = "brcm,bcm2711-pcie", .data = (ulong)&brcm_pcie_bcm2711_cfg },
++	{ .compatible = "brcm,bcm2712-pcie", .data = (ulong)&brcm_pcie_bcm2712_cfg },
+ 	{ }
+ };
+ 
+diff --git a/include/pci_ids.h b/include/pci_ids.h
+index cfff275daba..6bc3abe4a93 100644
+--- a/include/pci_ids.h
++++ b/include/pci_ids.h
+@@ -2555,6 +2555,9 @@
+ #define PCI_VENDOR_ID_TEKRAM		0x1de1
+ #define PCI_DEVICE_ID_TEKRAM_DC290	0xdc29
+ 
++#define PCI_VENDOR_ID_RPI		0x1de4
++#define PCI_DEVICE_ID_RP1_C0		0x0001
++
+ #define PCI_VENDOR_ID_TEHUTI		0x1fc9
+ #define PCI_DEVICE_ID_TEHUTI_3009	0x3009
+ #define PCI_DEVICE_ID_TEHUTI_3010	0x3010
+-- 
+2.53.0
+

@@ -1,0 +1,303 @@
+From 0cf00f20eef23255fab74c37dbe6f94607b309bf Mon Sep 17 00:00:00 2001
+From: appkins <13772502+appkins@users.noreply.github.com>
+Date: Mon, 16 Mar 2026 13:02:42 -0500
+Subject: [PATCH 10/15] pinctrl: add BCM2712 pinctrl driver
+
+Add pin control driver for the BCM2712 SoC used in Raspberry
+Pi 5, providing pin muxing and configuration.
+
+Link: https://github.com/sidero-community/u-boot
+Signed-off-by: appkins <13772502+appkins@users.noreply.github.com>
+---
+ drivers/pinctrl/broadcom/Kconfig           |  10 +
+ drivers/pinctrl/broadcom/Makefile          |   1 +
+ drivers/pinctrl/broadcom/pinctrl-bcm2712.c | 250 +++++++++++++++++++++
+ 3 files changed, 261 insertions(+)
+ create mode 100644 drivers/pinctrl/broadcom/pinctrl-bcm2712.c
+
+diff --git a/drivers/pinctrl/broadcom/Kconfig b/drivers/pinctrl/broadcom/Kconfig
+index b01b725583a..f49d0402b6b 100644
+--- a/drivers/pinctrl/broadcom/Kconfig
++++ b/drivers/pinctrl/broadcom/Kconfig
+@@ -13,3 +13,13 @@ config PINCTRL_BCM6838
+ 	help
+ 	   Support pin multiplexing and pin configuration control on
+ 	   Broadcom's 6838 family of SoCs.
++
++config PINCTRL_BCM2712
++	depends on ARCH_BCM283X && PINCTRL_FULL && OF_CONTROL
++	default y if BCM2712
++	bool "Broadcom BCM2712 pin control driver"
++	help
++	   Support pin multiplexing and pin configuration control on
++	   Broadcom's BCM2712 SoC (Raspberry Pi 5).
++	   This driver provides pinctrl functionality for configuring
++	   GPIO pin functions and pull-up/down resistors.
+diff --git a/drivers/pinctrl/broadcom/Makefile b/drivers/pinctrl/broadcom/Makefile
+index f94f3ce7c9c..6ffa04007f6 100644
+--- a/drivers/pinctrl/broadcom/Makefile
++++ b/drivers/pinctrl/broadcom/Makefile
+@@ -6,3 +6,4 @@
+ 
+ obj-$(CONFIG_PINCTRL_BCM283X) += pinctrl-bcm283x.o
+ obj-$(CONFIG_PINCTRL_BCM6838) += pinctrl-bcm6838.o
++obj-$(CONFIG_PINCTRL_BCM2712) += pinctrl-bcm2712.o
+diff --git a/drivers/pinctrl/broadcom/pinctrl-bcm2712.c b/drivers/pinctrl/broadcom/pinctrl-bcm2712.c
+new file mode 100644
+index 00000000000..1f34d82fa83
+--- /dev/null
++++ b/drivers/pinctrl/broadcom/pinctrl-bcm2712.c
+@@ -0,0 +1,250 @@
++// SPDX-License-Identifier: GPL-2.0+
++/*
++ * Pinctrl driver for Broadcom BCM2712 (Raspberry Pi 5)
++ *
++ * Copyright (C) 2024-2025 Equinix Metal
++ * Based on Linux driver by:
++ * Copyright (C) 2024-2025 Ivan T. Ivanov, Andrea della Porta
++ * Copyright (C) 2021-3 Raspberry Pi Ltd.
++ *
++ * Based on pinctrl-bcm283x.c and Linux pinctrl-brcmstb-bcm2712.c
++ */
++
++#include <dm.h>
++#include <dm/pinctrl.h>
++#include <errno.h>
++#include <asm/io.h>
++#include <linux/bitops.h>
++
++#define BCM2712_FSEL_COUNT	8
++#define BCM2712_FSEL_MASK	GENMASK(3, 0)
++
++/* Register offsets */
++#define BCM2712_FSEL_REG(pin)		((pin) / 8)
++#define BCM2712_FSEL_SHIFT(pin)		(((pin) % 8) * 4)
++
++/* Pull-up/down registers (BCM2711-style for BCM2712) */
++#define BCM2712_PUD_CNTRL_REG0		57
++#define BCM2712_PUD_REG_OFFSET(pin)	((pin) / 16)
++#define BCM2712_PUD_REG_SHIFT(pin)	(((pin) % 16) * 2)
++#define BCM2712_PUD_MASK		GENMASK(1, 0)
++
++/* Pull values */
++#define BCM2712_PUD_OFF		0x0
++#define BCM2712_PUD_DOWN	0x1
++#define BCM2712_PUD_UP		0x2
++
++struct bcm2712_pinctrl_priv {
++	void __iomem *base;
++};
++
++/**
++ * bcm2712_gpio_set_func() - Set pin function
++ * @dev: pinctrl device
++ * @pin: GPIO pin number
++ * @func: function selector (0-7)
++ */
++static void bcm2712_gpio_set_func(struct udevice *dev, unsigned int pin,
++				  unsigned int func)
++{
++	struct bcm2712_pinctrl_priv *priv = dev_get_priv(dev);
++	u32 reg_offset = BCM2712_FSEL_REG(pin);
++	u32 bit_shift = BCM2712_FSEL_SHIFT(pin);
++
++	clrsetbits_le32(priv->base + (reg_offset * 4),
++			BCM2712_FSEL_MASK << bit_shift,
++			(func & BCM2712_FSEL_MASK) << bit_shift);
++}
++
++/**
++ * bcm2712_gpio_get_func() - Get current pin function
++ * @dev: pinctrl device
++ * @pin: GPIO pin number
++ * @return: function selector (0-7)
++ */
++static unsigned int bcm2712_gpio_get_func(struct udevice *dev, unsigned int pin)
++{
++	struct bcm2712_pinctrl_priv *priv = dev_get_priv(dev);
++	u32 reg_offset = BCM2712_FSEL_REG(pin);
++	u32 bit_shift = BCM2712_FSEL_SHIFT(pin);
++	u32 val;
++
++	val = readl(priv->base + (reg_offset * 4));
++	return (val >> bit_shift) & BCM2712_FSEL_MASK;
++}
++
++/**
++ * bcm2712_gpio_set_pull() - Configure pull-up/down resistor
++ * @dev: pinctrl device
++ * @pin: GPIO pin number
++ * @pull: pull setting (BCM2712_PUD_OFF, BCM2712_PUD_DOWN, BCM2712_PUD_UP)
++ */
++static void bcm2712_gpio_set_pull(struct udevice *dev, unsigned int pin,
++				  unsigned int pull)
++{
++	struct bcm2712_pinctrl_priv *priv = dev_get_priv(dev);
++	u32 reg_offset = BCM2712_PUD_CNTRL_REG0 + BCM2712_PUD_REG_OFFSET(pin);
++	u32 bit_shift = BCM2712_PUD_REG_SHIFT(pin);
++
++	clrsetbits_le32(priv->base + (reg_offset * 4),
++			BCM2712_PUD_MASK << bit_shift,
++			(pull & BCM2712_PUD_MASK) << bit_shift);
++}
++
++/**
++ * bcm2712_pinctrl_set_state() - Configure pinctrl state from device tree
++ * @dev: pinctrl device
++ * @config: configuration node
++ * @return: 0 on success, negative error code on failure
++ */
++static int bcm2712_pinctrl_set_state(struct udevice *dev,
++				     struct udevice *config)
++{
++	u32 pin_arr[32];
++	u32 func_arr[32];
++	u32 pull_arr[32];
++	int pin_count = 0;
++	int func_count = 0;
++	int pull_count = 0;
++	int i;
++
++	/* Read pin array */
++	pin_count = dev_read_u32_array(config, "pins", pin_arr,
++				       ARRAY_SIZE(pin_arr));
++	if (pin_count <= 0) {
++		/* Try legacy brcm,pins property */
++		pin_count = dev_read_u32_array(config, "brcm,pins", pin_arr,
++					       ARRAY_SIZE(pin_arr));
++	}
++
++	if (pin_count <= 0) {
++		debug("%s: No pins specified in config %s\n",
++		      __func__, config->name);
++		return -EINVAL;
++	}
++
++	/* Read function array */
++	func_count = dev_read_u32_array(config, "function", func_arr,
++					ARRAY_SIZE(func_arr));
++	if (func_count <= 0) {
++		/* Try legacy brcm,function property */
++		func_count = dev_read_u32_default(config, "brcm,function", -1);
++		if (func_count >= 0) {
++			func_arr[0] = func_count;
++			func_count = 1;
++		}
++	}
++
++	if (func_count <= 0) {
++		debug("%s: No function specified in config %s\n",
++		      __func__, config->name);
++		return -EINVAL;
++	}
++
++	/* Validate function count */
++	if (func_count != 1 && func_count != pin_count) {
++		debug("%s: Function count (%d) must be 1 or match pin count (%d)\n",
++		      __func__, func_count, pin_count);
++		return -EINVAL;
++	}
++
++	/* Read pull array (optional) */
++	pull_count = dev_read_u32_array(config, "bias-pull-up", NULL, 0);
++	if (pull_count < 0) {
++		pull_count = dev_read_u32_array(config, "bias-pull-down",
++						NULL, 0);
++		if (pull_count >= 0) {
++			/* bias-pull-down present */
++			for (i = 0; i < pin_count; i++)
++				pull_arr[i] = BCM2712_PUD_DOWN;
++			pull_count = pin_count;
++		}
++	} else if (pull_count >= 0) {
++		/* bias-pull-up present */
++		for (i = 0; i < pin_count; i++)
++			pull_arr[i] = BCM2712_PUD_UP;
++		pull_count = pin_count;
++	}
++
++	/* Try legacy brcm,pull property */
++	if (pull_count <= 0) {
++		pull_count = dev_read_u32_array(config, "brcm,pull", pull_arr,
++						ARRAY_SIZE(pull_arr));
++	}
++
++	/* Apply configuration */
++	for (i = 0; i < pin_count; i++) {
++		u32 pin = pin_arr[i];
++		u32 func = (func_count == 1) ? func_arr[0] : func_arr[i];
++
++		/* Set function */
++		bcm2712_gpio_set_func(dev, pin, func);
++
++		/* Set pull if specified */
++		if (pull_count > 0) {
++			u32 pull = (pull_count == 1) ? pull_arr[0] : pull_arr[i];
++			bcm2712_gpio_set_pull(dev, pin, pull);
++		}
++	}
++
++	return 0;
++}
++
++/**
++ * bcm2712_pinctrl_get_gpio_mux() - Get GPIO mux setting
++ * @dev: pinctrl device
++ * @banknum: GPIO bank number (always 0 for BCM2712)
++ * @index: GPIO index within bank
++ * @return: mux value
++ */
++static int bcm2712_pinctrl_get_gpio_mux(struct udevice *dev, int banknum,
++					int index)
++{
++	if (banknum != 0)
++		return -EINVAL;
++
++	return bcm2712_gpio_get_func(dev, index);
++}
++
++/**
++ * bcm2712_pinctrl_of_to_plat() - Parse device tree properties
++ * @dev: pinctrl device
++ * @return: 0 on success, negative error code on failure
++ */
++static int bcm2712_pinctrl_of_to_plat(struct udevice *dev)
++{
++	struct bcm2712_pinctrl_priv *priv = dev_get_priv(dev);
++
++	priv->base = dev_read_addr_ptr(dev);
++	if (!priv->base) {
++		debug("%s: Failed to get base address\n", __func__);
++		return -EINVAL;
++	}
++
++	return 0;
++}
++
++static const struct pinctrl_ops bcm2712_pinctrl_ops = {
++	.set_state = bcm2712_pinctrl_set_state,
++	.get_gpio_mux = bcm2712_pinctrl_get_gpio_mux,
++};
++
++static const struct udevice_id bcm2712_pinctrl_match[] = {
++	{ .compatible = "brcm,bcm2712-pinctrl" },
++	{ .compatible = "brcm,bcm2712-aon-pinctrl" },
++	{ .compatible = "brcm,bcm2712c0-pinctrl" },
++	{ .compatible = "brcm,bcm2712c0-aon-pinctrl" },
++	{ .compatible = "brcm,bcm2712d0-pinctrl" },
++	{ .compatible = "brcm,bcm2712d0-aon-pinctrl" },
++	{ }
++};
++
++U_BOOT_DRIVER(pinctrl_bcm2712) = {
++	.name = "bcm2712_pinctrl",
++	.id = UCLASS_PINCTRL,
++	.of_match = of_match_ptr(bcm2712_pinctrl_match),
++	.of_to_plat = bcm2712_pinctrl_of_to_plat,
++	.priv_auto = sizeof(struct bcm2712_pinctrl_priv),
++	.ops = &bcm2712_pinctrl_ops,
++	.flags = DM_FLAG_PRE_RELOC,
++};
+-- 
+2.53.0
+

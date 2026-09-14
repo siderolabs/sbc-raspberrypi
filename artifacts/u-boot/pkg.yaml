@@ -19,15 +19,21 @@ steps:
     prepare:
       - |
         tar xf u-boot.tar.bz2 --strip-components=1
-      # rpi_generic (built with rpi_arm64_defconfig, which "uses the device-tree provided by the firmware")
       - |
-        patch -p1 < /pkg/patches/0002-rpi-add-NVMe-to-boot-order.patch
-        patch -p1 < /pkg/patches/0003-Revert-nvme-Correct-the-prps-per-page-calculation-me.patch
-        patch -p1 < /pkg/patches/0004-usb-xhci-brcm-Make-driver-compatible-with-downstream.patch
-        patch -p1 < /pkg/patches/0005-nvme-improve-readability-of-nvme_setup_prps.patch
-        patch -p1 < /pkg/patches/0006-nvme-Use-pointer-for-CPU-addressed-buffers.patch
-        patch -p1 < /pkg/patches/0007-nvme-translate-virtual-addresses-into-the-bus-s-addr.patch
-        patch -p1 < /pkg/patches/0008-enable-nvme-and-fixup-efi-boot.patch
+        patch -p1 < /pkg/patches/0002-arm-bcm283x-add-BCM2712-SoC-support.patch
+        patch -p1 < /pkg/patches/0003-arm-dts-add-bcm2712-rpi-5-b-support.patch
+        patch -p1 < /pkg/patches/0004-pci-brcmstb-add-BCM2712-PCIe-controller-support.patch
+        patch -p1 < /pkg/patches/0005-pci-uclass-fix-ofnode-matching-for-RP1.patch
+        patch -p1 < /pkg/patches/0006-reset-add-Broadcom-brcmstb-reset-drivers.patch
+        patch -p1 < /pkg/patches/0007-mfd-add-RP1-multi-function-device-driver.patch
+        patch -p1 < /pkg/patches/0008-clk-add-RP1-clock-driver.patch
+        patch -p1 < /pkg/patches/0009-gpio-add-RP1-GPIO-driver.patch
+        patch -p1 < /pkg/patches/0010-pinctrl-add-BCM2712-pinctrl-driver.patch
+        patch -p1 < /pkg/patches/0011-net-macb-add-RP1-ethernet-support.patch
+        patch -p1 < /pkg/patches/0012-nvme-use-virt-to-bus-address-translation.patch
+        patch -p1 < /pkg/patches/0013-core-fix-DMA-range-and-PCI-devfn-handling.patch
+        patch -p1 < /pkg/patches/0014-rpi-board-add-RP1-init-and-boot-config.patch
+        patch -p1 < /pkg/patches/0015-rpi-defconfig-enable-BCM2712-and-EFI-boot.patch
 
         make rpi_arm64_defconfig
     build:
