@@ -1,3 +1,30 @@
+## [sbc-raspberrypi 0.2.2](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.2.2) (2026-09-14)
+
+Welcome to the v0.2.2 release of sbc-raspberrypi!
+
+
+
+Please try out the release binaries and report any issues at
+https://github.com/siderolabs/sbc-raspberrypi/issues.
+
+### Contributors
+
+* Licia Seiker
+
+### Changes
+<details><summary>1 commit</summary>
+<p>
+
+* [`b1fe7bd`](https://github.com/siderolabs/sbc-raspberrypi/commit/b1fe7bda481a0f1a0e7fc05cf61d93e1b838e975) fix: restore CM5 Ethernet initialization
+</p>
+</details>
+
+### Dependency Changes
+
+This release has no dependency changes
+
+Previous release can be found at [v0.2.1](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.2.1)
+
 ## [sbc-raspberrypi 0.2.1](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.2.1) (2026-08-11)
 
 Welcome to the v0.2.1 release of sbc-raspberrypi!
