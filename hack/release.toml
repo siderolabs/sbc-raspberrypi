@@ -5,10 +5,35 @@ project_name = "sbc-raspberrypi"
 github_repo = "siderolabs/sbc-raspberrypi"
 match_deps = "^github.com/(siderolabs/[a-zA-Z0-9-]+)$"
 
-previous = "v0.2.1"
+previous = "v0.2.2"
 pre_release = false
 
 [notes]
+
+    [notes.updates]
+        title = "Component Updates"
+        description = """\
+* Linux: 7.3 (via siderolabs/pkgs)
+* Raspberry Pi firmware: 1.20260915
+* U-Boot: 2026.10
+* Raspberry Pi kernel tree (DTB source): stable_20260911 (6.18.50)
+"""
+
+    [notes.rpi5_rp1]
+        title = "Raspberry Pi 5 RP1 Device Tree"
+        description = """\
+Starting with Linux 6.19, the upstream RP1 driver no longer loads a runtime overlay and requires the RP1 device
+to be described statically under the PCIe root port.
+The Raspberry Pi 5 / CM5 device trees now use this topology (`pcie2/pci@0,0/dev@0,0/rp1`), matching upstream Linux,
+so on-board Ethernet, GPIO and USB keep working with Linux 7.3.
+"""
+
+    [notes.uboot]
+        title = "U-Boot"
+        description = """\
+U-Boot for `rpi_generic` was updated to 2026.10, which includes upstream support for NVMe on PCIe controllers with an inbound
+address offset (Raspberry Pi 4/CM4), so the downstream NVMe patches were dropped.
+"""
 
 [make_deps]
 

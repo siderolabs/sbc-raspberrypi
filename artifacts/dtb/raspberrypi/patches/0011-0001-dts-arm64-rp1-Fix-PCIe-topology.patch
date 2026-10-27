@@ -1,0 +1,68 @@
+From 528f90abf15da814eba18cbbb82c65f3e9b2a5d7 Mon Sep 17 00:00:00 2001
+From: Andrea della Porta <andrea.porta@suse.com>
+Date: Mon, 9 Feb 2026 14:41:16 +0100
+Subject: [PATCH] dts: arm64: rp1: Fix PCIe topology
+
+RP1 chipset on RaspberryPi 5 is described in the DT as a
+device directly under PCIe controller node, which is not
+how the topology actually works.
+
+Fix the node tree to reflect the hw path:
+RootComplex -> RootPort -> RP1 endpoint
+
+This is mandatory since the upstream driver dropped overlay
+support and relies on the of_node to be correctly
+coupled with the pci_device structure.
+
+Signed-off-by: Andrea della Porta <andrea.porta@suse.com>
+---
+ arch/arm64/boot/dts/broadcom/rp1.dtsi | 22 +++++++++++++++-------
+ 1 file changed, 15 insertions(+), 7 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/broadcom/rp1.dtsi b/arch/arm64/boot/dts/broadcom/rp1.dtsi
+index 4411ae5..31242b7 100644
+--- a/arch/arm64/boot/dts/broadcom/rp1.dtsi
++++ b/arch/arm64/boot/dts/broadcom/rp1.dtsi
+@@ -3,17 +3,24 @@
+ #include <dt-bindings/mfd/rp1.h>
+ 
+ &rp1_target {
+-    rp1_nexus {
++  pci@0,0 {
++    reg = <0x0 0x0 0x0 0x0 0x0>;
++    ranges;
++    bus-range = <0 1>;
++    device_type = "pci";
++    #address-cells = <3>;
++    #size-cells = <2>;
++
++    dev@0,0 {
+ 	compatible = "pci1de4,1";
+-	#address-cells = <3>;
+-	#size-cells = <2>;
+-	ranges = <0x01 0x00 0x00000000
+-		  0x02000000 0x00 0x00000000
+-		  0x0 0x410000>;
++	reg = <0x10000 0x0 0x0 0x0 0x0>;
++	ranges = <0x1 0x0 0x0 0x82010000 0x0 0x0 0x0 0x410000>;
+ 	interrupt-controller;
+ 	#interrupt-cells = <2>;
++	#address-cells = <3>;
++	#size-cells = <2>;
+ 
+-	rp1: rp1 {
++  	rp1: rp1 {
+ 		compatible = "simple-bus";
+ 		#address-cells = <2>;
+ 		#size-cells = <2>;
+@@ -1250,6 +1257,7 @@
+ 		};
+ 	};
+     };
++  };
+ };
+ 
+ &clocks {
+-- 
+2.51.0
+

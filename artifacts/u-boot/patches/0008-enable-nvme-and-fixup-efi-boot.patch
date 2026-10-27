@@ -9,13 +9,12 @@ Signed-off-by: Tom Plant <tom@tplant.com.au>
  1 file changed, 16 insertions(+)
 
 diff --git a/configs/rpi_arm64_defconfig b/configs/rpi_arm64_defconfig
-index f9dade18f6..f2394e4a52 100644
+index cdcf05ea..29df236e 100644
 --- a/configs/rpi_arm64_defconfig
 +++ b/configs/rpi_arm64_defconfig
-@@ -63,4 +63,20 @@ CONFIG_SYS_WHITE_ON_BLACK=y
- CONFIG_VIDEO_BCM2835=y
- CONFIG_CONSOLE_SCROLL_LINES=10
+@@ -71,3 +71,19 @@ CONFIG_CONSOLE_SCROLL_LINES=10
  CONFIG_PHYS_TO_BUS=y
+ CONFIG_MBEDTLS_LIB=y
  # CONFIG_HEXDUMP is not set
 +# Enable NVME
 +CONFIG_NVME_PCI=y
@@ -33,5 +32,3 @@ index f9dade18f6..f2394e4a52 100644
 +CONFIG_PXE_UTILS=n
 +# Disable EFI bootmanager (reserves memory on 0x00080000 -> prevents continuing after being successful)
 +CONFIG_CMD_BOOTEFI_BOOTMGR=n
---
-2.39.2
