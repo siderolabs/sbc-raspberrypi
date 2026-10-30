@@ -52,7 +52,7 @@ func (i *RpiInstaller) Install(_ context.Context, options overlay.InstallOptions
 		return err
 	}
 
-	err = copy.File(filepath.Join(options.ArtifactsPath, "arm64/u-boot/rpi_generic/u-boot.bin"), filepath.Join(options.MountPrefix, "/boot/EFI/u-boot.bin"))
+	err = copy.File(filepath.Join(options.ArtifactsPath, "arm64/u-boot/rpi_5/u-boot.bin"), filepath.Join(options.MountPrefix, "/boot/EFI/u-boot.bin"))
 	if err != nil {
 		return err
 	}
