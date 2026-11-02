@@ -1,3 +1,181 @@
+## [sbc-raspberrypi 0.3.0](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.3.0) (2026-11-02)
+
+Welcome to the v0.3.0 release of sbc-raspberrypi!
+
+
+
+Please try out the release binaries and report any issues at
+https://github.com/siderolabs/sbc-raspberrypi/issues.
+
+### Raspberry Pi 5 RP1 Device Tree
+
+Starting with Linux 6.19, the upstream RP1 driver no longer loads a runtime overlay and requires the RP1 device
+to be described statically under the PCIe root port.
+The Raspberry Pi 5 / CM5 device trees now use this topology (`pcie2/pci@0,0/dev@0,0/rp1`), matching upstream Linux,
+so on-board Ethernet, GPIO and USB keep working with Linux 7.3.
+
+
+### U-Boot
+
+U-Boot for `rpi_generic` was updated to 2026.10, which includes upstream support for NVMe on PCIe controllers with an inbound
+address offset (Raspberry Pi 4/CM4), so the downstream NVMe patches were dropped.
+
+
+### Component Updates
+
+* Linux: 7.3 (via siderolabs/pkgs)
+* Raspberry Pi firmware: 1.20260915
+* U-Boot: 2026.10
+* Raspberry Pi kernel tree (DTB source): stable_20260911 (6.18.50)
+
+
+### Contributors
+
+* Andrey Smirnov
+* Maja Bojarska
+* Noel Georgi
+* Dmitrii Sharshakov
+* Mateusz Urbanek
+* Max Makarov
+* Angelos Petheriotis
+* Christoph Engelbert (noctarius)
+* Dennis Docter
+* Evan Champion
+* Jarrad S
+* Joakim Nohlgård
+* Justin Garrison
+* Licia Seiker
+* Ryuki Maruyama
+* Sacha Weatherstone
+* Scott Vandiver
+* Steffen Windoffer
+* Steve Wills
+* Tom Plant
+* saguila
+* usman.malik_ext
+* zavermax
+
+### Changes
+<details><summary>1 commit</summary>
+<p>
+
+* [`9b12704`](https://github.com/siderolabs/sbc-raspberrypi/commit/9b12704e951a42e9c7e36174a70f500fa40e17e2) feat: update dependencies
+</p>
+</details>
+
+### Changes from siderolabs/pkgs
+<details><summary>72 commits</summary>
+<p>
+
+* [`4451182`](https://github.com/siderolabs/pkgs/commit/4451182794b44a05862a31f8d300b9243ac90ee0) feat: update backportable dependencies
+* [`e406ef2`](https://github.com/siderolabs/pkgs/commit/e406ef2a80e82fe75b7c6aace6c8bf3cf569d9d4) feat: enable arm64 ff-a tpm crb support
+* [`6e225ae`](https://github.com/siderolabs/pkgs/commit/6e225ae6d52833b6981d396e032d3759ea326df5) feat: enable applesmc on amd64
+* [`2c33dc1`](https://github.com/siderolabs/pkgs/commit/2c33dc199ae794acafe493d9634817036526cdad) feat: enable EDAC_10NM kernel option
+* [`5a48570`](https://github.com/siderolabs/pkgs/commit/5a48570db39ebf82a762a7e8f265437b3e03185f) feat: enable kTLS device offload (CONFIG_TLS_DEVICE, CONFIG_MLX5_EN_TLS)
+* [`b4b1cec`](https://github.com/siderolabs/pkgs/commit/b4b1cecfcf3d27cfd00ecd7b8284469fd8d09d5a) feat: add new flavor of NVIDIA 'new feature' for 615.x
+* [`9b40a60`](https://github.com/siderolabs/pkgs/commit/9b40a60e5b7ad6fec3eda0adf6f243f0b41d8730) feat: update Linux to 7.3
+* [`641c033`](https://github.com/siderolabs/pkgs/commit/641c033581593597d60351fe497e8d2f08a6ed71) fix: restore ACPI power button
+* [`8eab26a`](https://github.com/siderolabs/pkgs/commit/8eab26a6a03e61ceecdd7947b84acd17ad94d254) chore: update DRBD compat
+* [`3890840`](https://github.com/siderolabs/pkgs/commit/389084023a15ce0abf09c3314b73dd5945a386b6) feat: update Linux to 6.18.57
+* [`465612a`](https://github.com/siderolabs/pkgs/commit/465612a4410cce94a793f19b3c4f4b555d8df977) feat: update to containerd 2.3.7
+* [`cbcef4d`](https://github.com/siderolabs/pkgs/commit/cbcef4d69709d5f40ebe68d827ea83d0abe93634) feat: update Linux to 6.18.56
+* [`7bb6d79`](https://github.com/siderolabs/pkgs/commit/7bb6d79be1c6c2478fc18a92e84f7dd1af948ed2) feat: bump deps
+* [`305b1b6`](https://github.com/siderolabs/pkgs/commit/305b1b6422ceb1d4e753302f7a7b6fc0afcc5e5e) feat: bump deps
+* [`2a7769e`](https://github.com/siderolabs/pkgs/commit/2a7769ed74b945f6b019514692101bd521b551db) feat: enable bhyve guest support on amd64
+* [`ce4bafb`](https://github.com/siderolabs/pkgs/commit/ce4bafbaa8752613a0a2f2107bfc4150d77e3641) feat: enable CONFIG_DRM_ACCEL_AMDXDNA on amd64
+* [`8f7ce6c`](https://github.com/siderolabs/pkgs/commit/8f7ce6c9e4be02161ae3287695f6a6a1b09cf692) feat: enable CONFIG_MOTORCOMM_PHY on arm64
+* [`fa71c34`](https://github.com/siderolabs/pkgs/commit/fa71c34e441d4b7426658c70b0073fdb917404ca) feat: enable pNFS block and SCSI layouts in nfsd
+* [`f6b8411`](https://github.com/siderolabs/pkgs/commit/f6b8411d0c6fd17c273bbf46a42e18a12587e0e0) feat: add hailort v5 package
+* [`64af669`](https://github.com/siderolabs/pkgs/commit/64af6690ae487a9d8b8e0344035ccf09c00e3fca) feat: enable Qualcomm Cloud AI 100 (QAIC) driver
+* [`518972a`](https://github.com/siderolabs/pkgs/commit/518972a578a09b2bee7a6ba45546f844747bcb57) fix: add a patch to fix booting on Apple hardware
+* [`2b782b6`](https://github.com/siderolabs/pkgs/commit/2b782b61997c1dfc4aa12c02cabc18b7d6bea2e6) feat: update Linux to 6.18.54, runc to 1.5.2
+* [`4871c10`](https://github.com/siderolabs/pkgs/commit/4871c10ff33a9ad588efb2401187fb3429e08475) feat: enable CONFIG_CRYPTO_ECC, CONFIG_CRYPTO_ECDH on arm64 to match amd64
+* [`b4cb94c`](https://github.com/siderolabs/pkgs/commit/b4cb94c75af8e3255eb9e14fd157a77e8f85dd97) feat: enable CONFIG_BLK_WBT
+* [`6868054`](https://github.com/siderolabs/pkgs/commit/686805431e59ac4853c51c05d766c81f74e2c451) feat: update containerd to 2.3.6
+* [`55806c6`](https://github.com/siderolabs/pkgs/commit/55806c609ddd629616d8e84a35106628e1bf2ec8) feat: update systemd to v262
+* [`a2b57ee`](https://github.com/siderolabs/pkgs/commit/a2b57eea7abc028701e39a5a5960e75d61d9416e) fix: add missing sboms for swtpm
+* [`12b29b3`](https://github.com/siderolabs/pkgs/commit/12b29b3a1b09c185c8c09651caca89026b3ab57c) feat: update Linux to 6.18.53
+* [`6868000`](https://github.com/siderolabs/pkgs/commit/686800055f2ef93adf254abb7ae339f5cb33627f) feat: bump dependencies
+* [`bed8e18`](https://github.com/siderolabs/pkgs/commit/bed8e185ade6f90e911b02f515a0ed4106c69c24) feat: add swtpm
+* [`777c95f`](https://github.com/siderolabs/pkgs/commit/777c95fb11e6c2a32927b152c80a4723a7394a70) feat: enable CONFIG_MACSEC in the kernel
+* [`99ec357`](https://github.com/siderolabs/pkgs/commit/99ec35767254e1785b730f923166b2a61f242ba7) feat: update DRBD & Linux firmware
+* [`a51429b`](https://github.com/siderolabs/pkgs/commit/a51429b07a01e3494df91a1bbf2048e52ab839ec) feat(kernel): enable CONFIG_NO_HZ_FULL
+* [`b39d2c3`](https://github.com/siderolabs/pkgs/commit/b39d2c385802da6f4001520fb3107b52c7f152f9) feat: update Linux to 6.18.52
+* [`69ed550`](https://github.com/siderolabs/pkgs/commit/69ed550370d9ab9935fdef4fba5f90705aa97922) feat: update Linux to 6.18.51
+* [`f380535`](https://github.com/siderolabs/pkgs/commit/f3805354497f17d96a774e5b5622b1fbdbf45ae1) chore: rekres
+* [`05913b5`](https://github.com/siderolabs/pkgs/commit/05913b5a67e09da6713fec4310488602b7214d02) chore: updates 2026-09-10
+* [`1a28bfb`](https://github.com/siderolabs/pkgs/commit/1a28bfb9dfa24b0b1cf69020f62781cc23153529) chore: update tools, toolchain, rustc
+* [`e7b09e2`](https://github.com/siderolabs/pkgs/commit/e7b09e28164e85ab448e47e073864ee6fef09975) feat: enable earth-pt3 dvb driver
+* [`5096469`](https://github.com/siderolabs/pkgs/commit/5096469b3d563ff043d23146bcc5d2252e31323c) feat: update libpathrs to 0.2.6
+* [`43e533c`](https://github.com/siderolabs/pkgs/commit/43e533c8387a9b2751b0036bf19351291556306e) feat: update Linux to 6.18.50
+* [`977b61f`](https://github.com/siderolabs/pkgs/commit/977b61fb151992e74cbd89a4dcd921f91dc30ac8) feat: update containerd to 2.3.5
+* [`43e6298`](https://github.com/siderolabs/pkgs/commit/43e6298f76423318f9d8aa4469ed171271dd24a4) fix: add a kernel patch for EFI SecureBoot integrity lockdown
+* [`a8b682b`](https://github.com/siderolabs/pkgs/commit/a8b682b77160d065c4662dd9f06f31c38a298ac6) feat: add kernel modules to enable Intel HD audio
+* [`ff111ff`](https://github.com/siderolabs/pkgs/commit/ff111ff2db66442544a8dc97871f6eba44f1481e) feat: enable Apple Silicon platform drivers
+* [`e68eeb5`](https://github.com/siderolabs/pkgs/commit/e68eeb5a2c78f4dedad087e33a87a272f060d8ef) feat: enable VIRTIO_INPUT as built-in for amd64/arm64
+* [`381fc2d`](https://github.com/siderolabs/pkgs/commit/381fc2d45303a4909f65196c9875063e8010a009) feat: bump kernel to 6.18.49
+* [`5394321`](https://github.com/siderolabs/pkgs/commit/539432102f629aaaac3467052d88c1c8c092e2bd) feat: enable CONFIG_USB_LAN78XX and CONFIG_MICROCHIP_PHY on amd64
+* [`4b9bf36`](https://github.com/siderolabs/pkgs/commit/4b9bf36f402384842238f2f191451ba90e7bc3ef) fix: preserve symlinks for libudev
+* [`50bf09f`](https://github.com/siderolabs/pkgs/commit/50bf09fe4bc7cbc7e09d015d891506a6f30032d5) fix: update OpenSSL to 3.6.4
+* [`f2b7acf`](https://github.com/siderolabs/pkgs/commit/f2b7acf132341319c8e0f309487f5b714857c968) feat: update kernel to 6.18.48
+* [`73327ff`](https://github.com/siderolabs/pkgs/commit/73327ff97cac2cf3d544cbc3d8f417ee46e694f9) feat: bump kernel to 6.18.47
+* [`b6b2843`](https://github.com/siderolabs/pkgs/commit/b6b284315268fa0bd4d5d9067ebaf35c3488fcd5) feat: enable CONFIG_XFRM_INTERFACE in the kernel
+* [`696fa3c`](https://github.com/siderolabs/pkgs/commit/696fa3c27c4d2928d3cbf9fcaf89d3b7db1de47b) feat: expose more software as pkgs
+* [`aa069d3`](https://github.com/siderolabs/pkgs/commit/aa069d3df40ad2150e7db3ba7b677441b33f8ac6) chore: update OpenZFS to 2.4.4
+* [`c1837b6`](https://github.com/siderolabs/pkgs/commit/c1837b630397e1b331876e99f9dbe7ab1c8ce52e) feat: bump kernel to 6.18.46
+* [`28f5f23`](https://github.com/siderolabs/pkgs/commit/28f5f23ccf05ac8633e9f85146e47f27bbbae99f) feat: enable SPD5118 sensor driver
+* [`bc45b69`](https://github.com/siderolabs/pkgs/commit/bc45b690bd6008343a99df03c516e22f73e30fce) feat: backport aes256k support (Ceph)
+* [`b914c26`](https://github.com/siderolabs/pkgs/commit/b914c261a6141b40d6fc93514c458985467b1585) feat: update Go to 1.26.7
+* [`caac515`](https://github.com/siderolabs/pkgs/commit/caac51549df4350dda473edd848166b2ce1b8a39) feat: update Linux to 6.18.45
+* [`ada230a`](https://github.com/siderolabs/pkgs/commit/ada230ad41a2c869c558f2a0b4241e4f4c4c1a2a) feat: enable IPSec offload and dma-buf heaps
+* [`33d14e0`](https://github.com/siderolabs/pkgs/commit/33d14e0e8432917a3404ab7ac2b8339dbdff8818) feat(kernel): enable CONFIG_MLX5_VFIO_PCI
+* [`107b628`](https://github.com/siderolabs/pkgs/commit/107b62874966d6acab1a0509c89f68e6015552af) feat: kernel: enable MPTCP, sched_ext
+* [`c9173bb`](https://github.com/siderolabs/pkgs/commit/c9173bb3fa60ae23ad8f2c6e8cee0499a8c45077) feat: move IPVS into modules
+* [`d418aa7`](https://github.com/siderolabs/pkgs/commit/d418aa74ca7237ea573f4580f469d9ece839c7fb) feat: update containerd to 2.3.4
+* [`c4a6a61`](https://github.com/siderolabs/pkgs/commit/c4a6a61a1a6ea195e67fe9e5d4cb6984c90b50b0) feat: update Go to 1.26.6
+* [`fd81ac7`](https://github.com/siderolabs/pkgs/commit/fd81ac7c0ff35cbcd44652a99c0e903a84ff7da3) chore: bump qemu to 11.1.0
+* [`7cf62fb`](https://github.com/siderolabs/pkgs/commit/7cf62fb906fb010601a0c145bdfa19356db6a8d3) chore: bump pxe_fuse_ref to 3b3f794
+* [`797450a`](https://github.com/siderolabs/pkgs/commit/797450ae0a97ad56c029bb5908ca66af7feac3f1) chore: bump ipxe_ref to e6d0a97c
+* [`de9b576`](https://github.com/siderolabs/pkgs/commit/de9b57644ae6bf5102f76e3d41650b1c35e29204) chore: rekres
+* [`74b0cb6`](https://github.com/siderolabs/pkgs/commit/74b0cb61f29bc7f3973df86599af0696c876f9d3) chore: bump deps 2026-08-12
+* [`bcdabd9`](https://github.com/siderolabs/pkgs/commit/bcdabd9e2f0c67c077b0074b48238f767a857710) feat: update Linux firmware to 20260810
+</p>
+</details>
+
+### Changes from siderolabs/tools
+<details><summary>20 commits</summary>
+<p>
+
+* [`2d70a26`](https://github.com/siderolabs/tools/commit/2d70a26416b84373885c755ce628d62542cb0a5c) feat: update Go to 1.27.3
+* [`151acc5`](https://github.com/siderolabs/tools/commit/151acc57e11886110bffcf89cb4e7a6a59da4cf5) feat: update dependencies
+* [`e952d34`](https://github.com/siderolabs/tools/commit/e952d347780c0b72ccc1191f3804be11e4ccd8cf) feat: update llvm to 23.1.3
+* [`32e115c`](https://github.com/siderolabs/tools/commit/32e115c36cbc94cc7cfb0299497bbb4bd6b1b1e4) fix: restore llvm 22 for rust compatibility
+* [`47166ad`](https://github.com/siderolabs/tools/commit/47166adc2b76ff4ead4843fbe0ad5b42e54ec520) feat: bump deps
+* [`d40b203`](https://github.com/siderolabs/tools/commit/d40b203821b63da62f9b04aab6c116b500bc0327) feat: update tools components
+* [`19bb4b7`](https://github.com/siderolabs/tools/commit/19bb4b7facf4cb83f7f0c979422ae4642bc1a4c9) chore: downgrade llvm to major 22
+* [`b28aa66`](https://github.com/siderolabs/tools/commit/b28aa66476f19f3449a9651edfdca6900a325537) chore: bump util-linux 2.42.3
+* [`1023701`](https://github.com/siderolabs/tools/commit/1023701f7b0a51dbb67d03fb204313151c095ba9) chore: update dependencies 2026-09-08
+* [`c3165c7`](https://github.com/siderolabs/tools/commit/c3165c77d1f7cecce410d49aad533b9e2af546fe) chore: update toolchain image
+* [`09ccc74`](https://github.com/siderolabs/tools/commit/09ccc74617a534838109bc64bb663f7c7c40fcd2) feat: bump go to 1.26.8
+* [`35fab51`](https://github.com/siderolabs/tools/commit/35fab513ae40e9532a9db17bdaace50d4578a470) fix: update OpenSSL to 3.6.4
+* [`e033f2a`](https://github.com/siderolabs/tools/commit/e033f2af700a81a4199188cefced8b43e94487ff) feat: move more packages into separate images
+* [`d102f15`](https://github.com/siderolabs/tools/commit/d102f15b6ce95fb526a964a3eb8908bc235d1989) feat: update Go to 1.26.7
+* [`fd531a3`](https://github.com/siderolabs/tools/commit/fd531a36b8f9668316e1dd1f7938ef26e36df77e) feat: update Go to 1.26.6
+* [`5eabe31`](https://github.com/siderolabs/tools/commit/5eabe31f240b3f80df0956f53651df706e0dbf4e) chore: rekres 2026-08-12
+* [`dcf177c`](https://github.com/siderolabs/tools/commit/dcf177c4cdb6145f459044be0ea71995c9210464) chore: update deps 2026-08-12
+* [`7c77e8c`](https://github.com/siderolabs/tools/commit/7c77e8c70d26829b1d6ee48c380ec4a855e857f5) chore: update toolchain to v1.14.0
+* [`cf1a7ae`](https://github.com/siderolabs/tools/commit/cf1a7ae2f7723e61a90e5e734ea79886792f77ef) chore: update perl to 5.44.0
+* [`89e4a00`](https://github.com/siderolabs/tools/commit/89e4a003f0ac008d1813b7f383a2859b02ff2090) chore: dependency updates 2026-08-10
+</p>
+</details>
+
+### Dependency Changes
+
+* **github.com/siderolabs/pkgs**   v1.14.0-alpha.0-127-g7d8b87b -> v1.15.0-alpha.0-65-g4451182
+* **github.com/siderolabs/tools**  v1.14.0-alpha.0-29-g80fd6eb -> v1.15.0-alpha.0-15-g2d70a26
+
+Previous release can be found at [v0.2.2](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.2.2)
+
 ## [sbc-raspberrypi 0.2.2](https://github.com/siderolabs/sbc-raspberrypi/releases/tag/v0.2.2) (2026-09-14)
 
 Welcome to the v0.2.2 release of sbc-raspberrypi!
