@@ -14,7 +14,7 @@ vars:
   uboot_sha512: e38fee5568f14332c37a7ca03d3e69367bcc342ec09421a2b6d971a98d62b7ec522602ecd5df4c9ffb5d900672861259a6c6902294d7fd89f45afc268dc68e10
 
   # renovate: datasource=github-tags depName=raspberrypi/linux
-  raspberrypi_kernel_version: stable_20260911
+  raspberrypi_kernel_version: stable_20261103
   raspberrypi_kernel_sha256: 5f1865774de3540137535802ac52c60b78227fa19d1254b781c3fe089677dceb
   raspberrypi_kernel_sha512: 645f65b38a5b137a1e1ed2623aaed1feb688bd48d6a886602d76d0096ad4c3d9361e77d9161d1e2e0c571477817680710aa504d400fe1a05581d46dc6512e7f3
 
